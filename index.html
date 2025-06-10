@@ -1,38 +1,767 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
-
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="bypass">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>bypass</title>
-  <link rel="manifest" href="manifest.json">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Admin - Bypass</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js/dist/Chart.min.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #232526 0%, #1de9b6 100%);
+      font-family: 'Poppins', sans-serif;
+      color: #fff;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 10px 60px 10px;
+    }
+    h1 {
+      text-align: center;
+      color: #1de9b6;
+      font-size: 2.2rem;
+      margin-bottom: 30px;
+    }
+    .menu {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    .menu button {
+      background: #232526;
+      color: #1de9b6;
+      border: 2px solid #1de9b6;
+      border-radius: 10px;
+      padding: 12px 28px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .menu button.active, .menu button:hover {
+      background: #1de9b6;
+      color: #232526;
+    }
+    .section {
+      display: none;
+    }
+    .section.active {
+      display: block;
+    }
+    .table-container {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(20, 20, 20, 0.98);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+      margin-bottom: 30px;
+    }
+    th, td {
+      padding: 12px 8px;
+      text-align: left;
+      border-bottom: 1px solid #1de9b6;
+      font-size: 0.98rem;
+    }
+    th {
+      background: #1de9b6;
+      color: #232526;
+      font-weight: bold;
+      font-size: 1.05rem;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .event-img, .user-img {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 1px solid #1de9b6;
+      background: #232526;
+    }
+    .action-btn {
+      background: #ff5252;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-size: 0.95em;
+      cursor: pointer;
+      margin-right: 6px;
+      transition: background 0.2s;
+    }
+    .action-btn:hover {
+      background: #ff1744;
+    }
+    .details-btn {
+      background: #1de9b6;
+      color: #232526;
+      margin-right: 0;
+    }
+    .details-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .details-content {
+      background: #232526;
+      border-radius: 18px;
+      padding: 32px 24px;
+      max-width: 95vw;
+      width: 420px;
+      color: #fff;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
+      position: relative;
+    }
+    .details-content img {
+      width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 18px;
+      background: #1de9b6;
+    }
+    .close-modal {
+      position: absolute;
+      top: 12px;
+      right: 18px;
+      background: none;
+      border: none;
+      color: #1de9b6;
+      font-size: 1.7em;
+      cursor: pointer;
+    }
+    .stat-card {
+      background: #1de9b6;
+      color: #232526;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      flex: 1 1 200px;
+      min-width: 180px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s;
+    }
+    .stat-card:hover {
+      transform: translateY(-4px);
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 8px;
+    }
+    @media (max-width: 700px) {
+      .container { padding: 10px 2vw 40px 2vw; }
+      th, td { font-size: 0.93rem; }
+      .details-content { padding: 18px 6px; }
+    }
+    @media (max-width: 500px) {
+      .container { padding: 2px 0 10px 0; }
+      th, td { padding: 7px 2px; }
+      .details-content { width: 98vw; }
+    }
+    /* Dashboard specific styles */
+    #dashboardSection {
+      display: none;
+    }
+    .dashboard-cards {
+      display: flex;
+      gap: 2rem;
+      margin-bottom: 2rem;
+      justify-content: center;
+    }
+    .dashboard-card {
+      background: linear-gradient(135deg, #f8fafc 60%, #e0e7ef 100%);
+      border-radius: 1.2rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      padding: 2rem 2.5rem;
+      min-width: 160px;
+      text-align: center;
+      font-size: 1.2rem;
+      color: #222;
+    }
+    .dashboard-card h3 {
+      font-size: 2.5rem;
+      margin: 0 0 0.5rem 0;
+      color: #007bff;
+      font-weight: 700;
+    }
+    .dashboard-charts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      justify-content: center;
+    }
+    .dashboard-charts canvas {
+      background: #fff;
+      border-radius: 1rem;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      padding: 1rem;
+      max-width: 420px;
+      width: 100%;
+    }
+    @media (max-width: 900px) {
+      .dashboard-cards, .dashboard-charts { flex-direction: column; align-items: center; }
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <div class="container">
+    <h1>Panel Admin – Bypass</h1>
+    <div class="menu">
+      <button id="btnDashboard" onclick="showSection('dashboard')">Dashboard</button>
+      <button id="btnEvents" class="active" onclick="showSection('events')">Événements</button>
+      <button id="btnUsers" onclick="showSection('users')">Utilisateurs</button>
+      <button id="btnGroups" onclick="showSection('groups')">Groupes</button>
+      <button id="btnFees" onclick="showSection('fees')">Frais</button>
+      <button id="btnWithdrawals" onclick="showSection('withdrawals')">Retraits</button>
+    </div>
+    <div id="section-dashboard" class="section">
+      <div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin-bottom:30px;">
+        <div class="stat-card" id="statEvents"><span class="stat-value">-</span><span class="stat-label">Événements</span></div>
+        <div class="stat-card" id="statUsers"><span class="stat-value">-</span><span class="stat-label">Utilisateurs</span></div>
+        <div class="stat-card" id="statGroups"><span class="stat-value">-</span><span class="stat-label">Groupes</span></div>
+        <div class="stat-card" id="statMoney"><span class="stat-value">-</span><span class="stat-label">Argent en circulation</span></div>
+      </div>
+      <div style="max-width:900px;margin:0 auto;">
+        <canvas id="chartEvents" height="110"></canvas>
+        <canvas id="chartUsers" height="110" style="margin-top:32px;"></canvas>
+      </div>
+    </div>
+    <div id="section-events" class="section active">
+      <button class="action-btn" style="background:#1de9b6;color:#232526;margin-bottom:18px;" onclick="window.open('create_event.html', '_blank')">Créer un événement</button>
+      <div class="table-container">
+        <table id="eventsTable">
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Nom</th>
+              <th>Date</th>
+              <th>Début</th>
+              <th>Fin</th>
+              <th>Lieu</th>
+              <th>Établissement</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="eventsBody">
+            <tr><td colspan="8" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="section-users" class="section">
+      <button class="action-btn" style="background:#1de9b6;color:#232526;margin-bottom:18px;" onclick="openUserForm()">Créer un utilisateur</button>
+      <div class="table-container">
+        <table id="usersTable">
+          <thead>
+            <tr>
+              <th>Photo</th>
+              <th>Nom</th>
+              <th>Email</th>
+              <th>Genre</th>
+              <th>Date création</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody">
+            <tr><td colspan="6" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="section-groups" class="section">
+      <div class="table-container">
+        <table id="groupsTable">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Ville</th>
+              <th>Créateur</th>
+              <th>Membres</th>
+              <th>Date création</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="groupsBody">
+            <tr><td colspan="6" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="section-fees" class="section">
+      <h2>Frais de la plateforme</h2>
+      <form id="feesForm" style="max-width:400px;margin:0 auto;display:flex;flex-direction:column;gap:18px;">
+        <label>Frais plateforme (%)
+          <input type="number" step="0.01" min="0" max="100" id="inputPlatformFee" required style="width:100%;padding:8px;border-radius:8px;border:1px solid #1de9b6;">
+        </label>
+        <label>Frais Stripe (%)
+          <input type="number" step="0.01" min="0" max="100" id="inputStripeFee" required style="width:100%;padding:8px;border-radius:8px;border:1px solid #1de9b6;">
+        </label>
+        <label>Frais Stripe Fixe (€)
+          <input type="number" step="0.01" min="0" id="inputStripeFixe" required style="width:100%;padding:8px;border-radius:8px;border:1px solid #1de9b6;">
+        </label>
+        <button type="submit" style="background:#1de9b6;color:#232526;font-weight:bold;padding:12px 0;border:none;border-radius:8px;font-size:1.1em;">Enregistrer</button>
+        <div id="feesMsg" style="color:#1de9b6;text-align:center;"></div>
+      </form>
+    </div>
+    <div id="section-withdrawals" class="section">
+      <h2>Demandes de Retrait</h2>
+      <div class="table-container">
+        <table id="withdrawalsTable">
+          <thead>
+            <tr>
+              <th>Montant (€)</th>
+              <th>Statut</th>
+              <th>Stripe Account</th>
+              <th>Date</th>
+              <th>User ID</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="withdrawalsBody">
+            <tr><td colspan="6" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <section id="dashboardSection" style="display:none;">
+      <h2>Dashboard</h2>
+      <div class="dashboard-cards">
+        <div class="dashboard-card">
+          <h3 id="statEvents">0</h3>
+          <p>Événements</p>
+        </div>
+        <div class="dashboard-card">
+          <h3 id="statUsers">0</h3>
+          <p>Utilisateurs</p>
+        </div>
+        <div class="dashboard-card">
+          <h3 id="statGroups">0</h3>
+          <p>Groupes</p>
+        </div>
+      </div>
+      <div class="dashboard-charts">
+        <canvas id="eventsChart" height="120"></canvas>
+        <canvas id="usersChart" height="120"></canvas>
+      </div>
+    </section>
+  </div>
+  <div id="modal" style="display:none;"></div>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCU2FwOTsns4ruP1mnlr8gKuZl04eqFsK4",
+      authDomain: "ensemble-3ccfc.firebaseapp.com",
+      projectId: "ensemble-3ccfc",
+      storageBucket: "ensemble-3ccfc.firebasestorage.app",
+      messagingSenderId: "167133589536",
+      appId: "1:167133589536:web:17e9e0a6b5df193d5d4c45",
+      measurementId: "G-9STXVWW560"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Menu navigation
+    function showSection(section) {
+      document.getElementById('dashboardSection').style.display = section === 'dashboard' ? 'block' : 'none';
+      document.querySelectorAll('.menu button').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+      document.getElementById('btn'+capitalize(section)).classList.add('active');
+      document.getElementById('section-'+section).classList.add('active');
+      if (section === 'dashboard') {
+        loadDashboardStats();
+      }
+      if (section === 'fees') {
+        loadFees();
+      }
+      if (section === 'withdrawals') {
+        loadWithdrawals();
+      }
+    }
+    function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    // Chargement des stats Firestore et affichage dashboard
+    async function loadDashboardStats() {
+      // Récupération des stats Firestore
+      const usersSnap = await db.collection('users').get();
+      const eventsSnap = await db.collection('events').get();
+      const groupsSnap = await db.collection('groups').get();
+      const transactionsSnap = await db.collection('transactions').get();
+      document.getElementById('statEvents').querySelector('.stat-value').textContent = eventsSnap.size;
+      document.getElementById('statUsers').querySelector('.stat-value').textContent = usersSnap.size;
+      document.getElementById('statGroups').querySelector('.stat-value').textContent = groupsSnap.size;
+      // Calcul de l'argent en circulation
+      let totalMoney = 0;
+      transactionsSnap.forEach(doc => {
+        const d = doc.data();
+        if (d.part && !isNaN(d.part)) totalMoney += Number(d.part);
+      });
+      document.getElementById('statMoney').querySelector('.stat-value').textContent = totalMoney.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+      // Préparation des données pour les graphiques
+      const eventsByMonth = {};
+      eventsSnap.forEach(doc => {
+        const d = doc.data();
+        const date = d.dateDebut ? new Date(d.dateDebut.seconds*1000) : null;
+        if(date) {
+          const key = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}`;
+          eventsByMonth[key] = (eventsByMonth[key]||0)+1;
+        }
+      });
+      const usersByMonth = {};
+      usersSnap.forEach(doc => {
+        const d = doc.data();
+        const date = d.createdAt ? new Date(d.createdAt.seconds*1000) : null;
+        if(date) {
+          const key = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}`;
+          usersByMonth[key] = (usersByMonth[key]||0)+1;
+        }
+      });
+      renderChart('eventsChart', 'Événements/mois', eventsByMonth);
+      renderChart('usersChart', 'Utilisateurs/mois', usersByMonth);
+    }
+
+    function renderChart(canvasId, label, dataObj) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      const labels = Object.keys(dataObj).sort();
+      const data = labels.map(k=>dataObj[k]);
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: label,
+            data: data,
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0,123,255,0.1)',
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // EVENTS
+    let allEvents = [];
+    async function loadEvents() {
+      document.getElementById('eventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>';
+      let query = db.collection('events').orderBy('date', 'desc');
+      const snapshot = await query.get();
+      allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (allEvents.length === 0) {
+        document.getElementById('eventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ff5252;">Aucun événement trouvé</td></tr>';
+        return;
+      }
+      document.getElementById('eventsBody').innerHTML = allEvents.map(ev => `
+        <tr>
+          <td><img class="event-img" src="${ev.imageUrl||'https://via.placeholder.com/70x45/232526/1de9b6?text=Image'}" alt="img"></td>
+          <td>${ev.name||''}</td>
+          <td>${formatDate(ev.date)}</td>
+          <td>${ev.startTime||''}</td>
+          <td>${ev.endTime||''}</td>
+          <td>${ev.location||''}</td>
+          <td>${ev.etablissement||''}</td>
+          <td>
+            <button class="action-btn details-btn" onclick="showEventDetails('${ev.id}')">Détails</button>
+            <button class="action-btn" style="background:#ffc107;color:#232526;" onclick="openEventForm('${ev.id}')">✏️</button>
+            <button class="action-btn" onclick="deleteEvent('${ev.id}')">Supprimer</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+    function formatDate(ts) {
+      if (!ts) return '';
+      let d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
+      return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+    }
+    async function showEventDetails(id) {
+      const ev = allEvents.find(e => e.id === id);
+      if (!ev) return;
+      document.getElementById('modal').innerHTML = `
+        <div class="details-modal" onclick="closeModal(event)">
+          <div class="details-content" onclick="event.stopPropagation()">
+            <button class="close-modal" onclick="closeModal(event)">&times;</button>
+            <img src="${ev.imageUrl||'https://via.placeholder.com/400x180/232526/1de9b6?text=Image'}" alt="img" />
+            <h2>${ev.name||''}</h2>
+            <p><b>Date :</b> ${formatDate(ev.date)}<br>
+            <b>Début :</b> ${ev.startTime||''} (${ev.startDateTime ? new Date(ev.startDateTime.seconds*1000).toLocaleString('fr-FR') : ''})<br>
+            <b>Fin :</b> ${ev.endTime||''} (${ev.endDateTime ? new Date(ev.endDateTime.seconds*1000).toLocaleString('fr-FR') : ''})<br>
+            <b>Lieu :</b> ${ev.location||''}<br>
+            <b>Établissement :</b> ${ev.etablissement||''}<br>
+            <b>Description :</b> ${ev.description||''}<br>
+            <b>createdAt :</b> ${ev.createdAt ? new Date(ev.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}</p>
+          </div>
+        </div>
+      `;
+      document.getElementById('modal').style.display = 'block';
+    }
+    async function deleteEvent(id) {
+      if (!confirm('Supprimer cet événement ?')) return;
+      await db.collection('events').doc(id).delete();
+      loadEvents();
+    }
+    function openEventForm(id) {
+      let ev = id ? allEvents.find(e => e.id === id) : {};
+      document.getElementById('modal').innerHTML = `
+        <div class="details-modal" onclick="closeModal(event)">
+          <div class="details-content" onclick="event.stopPropagation()">
+            <button class="close-modal" onclick="closeModal(event)">&times;</button>
+            <h2>${id ? 'Modifier' : 'Créer'} un événement</h2>
+            <form id="eventForm" style="display:flex;flex-direction:column;gap:12px;">
+              <label>Nom <input name="name" required value="${ev?.name||''}" style="width:100%;padding:7px;"></label>
+              <label>Date <input name="date" type="date" required value="${ev?.date ? new Date(ev.date.seconds*1000).toISOString().slice(0,10) : ''}" style="width:100%;padding:7px;"></label>
+              <label>Heure début <input name="startTime" type="time" value="${ev?.startTime||''}" style="width:100%;padding:7px;"></label>
+              <label>Heure fin <input name="endTime" type="time" value="${ev?.endTime||''}" style="width:100%;padding:7px;"></label>
+              <label>Lieu <input name="location" value="${ev?.location||''}" style="width:100%;padding:7px;"></label>
+              <label>Établissement <input name="etablissement" value="${ev?.etablissement||''}" style="width:100%;padding:7px;"></label>
+              <label>Description <textarea name="description" style="width:100%;padding:7px;">${ev?.description||''}</textarea></label>
+              <button type="submit" style="background:#1de9b6;color:#232526;font-weight:bold;padding:10px 0;border:none;border-radius:8px;font-size:1.1em;">${id ? 'Enregistrer' : 'Créer'}</button>
+            </form>
+          </div>
+        </div>
+      `;
+      document.getElementById('modal').style.display = 'block';
+      document.getElementById('eventForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const f = e.target;
+        const data = {
+          name: f.name.value,
+          date: f.date.value ? new Date(f.date.value) : null,
+          startTime: f.startTime.value,
+          endTime: f.endTime.value,
+          location: f.location.value,
+          etablissement: f.etablissement.value,
+          description: f.description.value
+        };
+        if (id) {
+          await db.collection('events').doc(id).update(data);
+        } else {
+          data.createdAt = new Date();
+          await db.collection('events').add(data);
+        }
+        closeModal();
+        loadEvents();
+      };
+    }
+
+    // USERS
+    let allUsers = [];
+    async function loadUsers() {
+      document.getElementById('usersBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>';
+      let query = db.collection('users').orderBy('createdAt', 'desc');
+      const snapshot = await query.get();
+      allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (allUsers.length === 0) {
+        document.getElementById('usersBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#ff5252;">Aucun utilisateur trouvé</td></tr>';
+        return;
+      }
+      document.getElementById('usersBody').innerHTML = allUsers.map(u => `
+        <tr>
+          <td><img class="user-img" src="${u.photoURL||'https://via.placeholder.com/50x50/232526/1de9b6?text=User'}" alt="img"></td>
+          <td>${u.username||u.displayName||''}</td>
+          <td>${u.email||''}</td>
+          <td>${u.sexe||''}</td>
+          <td>${u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}</td>
+          <td>
+            <button class="action-btn details-btn" onclick="showUserDetails('${u.id}')">Détails</button>
+            <button class="action-btn" style="background:#ffc107;color:#232526;" onclick="openUserForm('${u.id}')">✏️</button>
+            <button class="action-btn" onclick="deleteUser('${u.id}')">Supprimer</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+    async function showUserDetails(id) {
+      const u = allUsers.find(e => e.id === id);
+      if (!u) return;
+      document.getElementById('modal').innerHTML = `
+        <div class="details-modal" onclick="closeModal(event)">
+          <div class="details-content" onclick="event.stopPropagation()">
+            <button class="close-modal" onclick="closeModal(event)">&times;</button>
+            <img src="${u.photoURL||'https://via.placeholder.com/400x180/232526/1de9b6?text=User'}" alt="img" />
+            <h2>${u.username||u.displayName||''}</h2>
+            <p><b>Email :</b> ${u.email||''}<br>
+            <b>Genre :</b> ${u.sexe||''}<br>
+            <b>Date création :</b> ${u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}<br>
+            <b>ID :</b> ${u.id}</p>
+          </div>
+        </div>
+      `;
+      document.getElementById('modal').style.display = 'block';
+    }
+    async function deleteUser(id) {
+      if (!confirm('Supprimer cet utilisateur ?')) return;
+      await db.collection('users').doc(id).delete();
+      loadUsers();
+    }
+    function openUserForm(id) {
+      let u = id ? allUsers.find(e => e.id === id) : {};
+      document.getElementById('modal').innerHTML = `
+        <div class="details-modal" onclick="closeModal(event)">
+          <div class="details-content" onclick="event.stopPropagation()">
+            <button class="close-modal" onclick="closeModal(event)">&times;</button>
+            <h2>${id ? 'Modifier' : 'Créer'} un utilisateur</h2>
+            <form id="userForm" style="display:flex;flex-direction:column;gap:12px;">
+              <label>Nom <input name="username" required value="${u?.username||u?.displayName||''}" style="width:100%;padding:7px;"></label>
+              <label>Email <input name="email" type="email" required value="${u?.email||''}" style="width:100%;padding:7px;"></label>
+              <label>Genre <input name="sexe" value="${u?.sexe||''}" style="width:100%;padding:7px;"></label>
+              <button type="submit" style="background:#1de9b6;color:#232526;font-weight:bold;padding:10px 0;border:none;border-radius:8px;font-size:1.1em;">${id ? 'Enregistrer' : 'Créer'}</button>
+            </form>
+          </div>
+        </div>
+      `;
+      document.getElementById('modal').style.display = 'block';
+      document.getElementById('userForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const f = e.target;
+        const data = {
+          username: f.username.value,
+          email: f.email.value,
+          sexe: f.sexe.value
+        };
+        if (id) {
+          await db.collection('users').doc(id).update(data);
+        } else {
+          data.createdAt = new Date();
+          await db.collection('users').add(data);
+        }
+        closeModal();
+        loadUsers();
+      };
+    }
+
+    // GROUPS
+    let allGroups = [];
+    async function loadGroups() {
+      document.getElementById('groupsBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>';
+      let query = db.collection('groups').orderBy('createdAt', 'desc');
+      const snapshot = await query.get();
+      allGroups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (allGroups.length === 0) {
+        document.getElementById('groupsBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#ff5252;">Aucun groupe trouvé</td></tr>';
+        return;
+      }
+      document.getElementById('groupsBody').innerHTML = allGroups.map(g => `
+        <tr>
+          <td>${g.name||''}</td>
+          <td>${g.city||g.ville||''}</td>
+          <td>${g.creatorName||g.creatorId||''}</td>
+          <td>${g.members ? Object.keys(g.members).length : 0}</td>
+          <td>${g.createdAt ? new Date(g.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}</td>
+          <td>
+            <button class="action-btn details-btn" onclick="showGroupDetails('${g.id}')">Détails</button>
+            <button class="action-btn" onclick="deleteGroup('${g.id}')">Supprimer</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+    async function showGroupDetails(id) {
+      const g = allGroups.find(e => e.id === id);
+      if (!g) return;
+      document.getElementById('modal').innerHTML = `
+        <div class="details-modal" onclick="closeModal(event)">
+          <div class="details-content" onclick="event.stopPropagation()">
+            <button class="close-modal" onclick="closeModal(event)">&times;</button>
+            <h2>${g.name||''}</h2>
+            <p><b>Ville :</b> ${g.city||g.ville||''}<br>
+            <b>Créateur :</b> ${g.creatorName||g.creatorId||''}<br>
+            <b>Membres :</b> ${g.members ? Object.keys(g.members).length : 0}<br>
+            <b>Date création :</b> ${g.createdAt ? new Date(g.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}<br>
+            <b>ID :</b> ${g.id}</p>
+          </div>
+        </div>
+      `;
+      document.getElementById('modal').style.display = 'block';
+    }
+    async function deleteGroup(id) {
+      if (!confirm('Supprimer ce groupe ?')) return;
+      await db.collection('groups').doc(id).delete();
+      loadGroups();
+    }
+
+    // FRAIS
+    async function loadFees() {
+      const doc = await db.collection('settings').doc('frais').get();
+      const data = doc.exists ? doc.data() : {};
+      document.getElementById('inputPlatformFee').value = data.plateforme ?? 8;
+      document.getElementById('inputStripeFee').value = data.stripe ?? 1.4;
+      document.getElementById('inputStripeFixe').value = data.stripeFixe ?? 0.25;
+      document.getElementById('feesMsg').textContent = '';
+    }
+
+    document.getElementById('feesForm').onsubmit = async function(e) {
+      e.preventDefault();
+      const plateforme = parseFloat(document.getElementById('inputPlatformFee').value);
+      const stripe = parseFloat(document.getElementById('inputStripeFee').value);
+      const stripeFixe = parseFloat(document.getElementById('inputStripeFixe').value);
+      await db.collection('settings').doc('frais').set({ plateforme, stripe, stripeFixe });
+      document.getElementById('feesMsg').textContent = 'Frais mis à jour !';
+    };
+
+    // RETRAITS
+    let allWithdrawals = [];
+    async function loadWithdrawals() {
+      const tbody = document.getElementById('withdrawalsBody');
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>';
+      const snap = await db.collection('demandederetraits').orderBy('timestamp', 'desc').get();
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#ff5252;">Aucune demande</td></tr>';
+        return;
+      }
+      tbody.innerHTML = '';
+      snap.forEach(doc => {
+        const d = doc.data();
+        const statusClass = d.status === 'Validé' ? 'status-valide' : d.status === 'Refusé' ? 'status-refuse' : 'status-attente';
+        tbody.innerHTML += `
+          <tr>
+            <td>${d.amount ? Number(d.amount).toLocaleString('fr-FR', {minimumFractionDigits:2}) : '-'}</td>
+            <td><span class="status-badge ${statusClass}">${d.status||'-'}</span></td>
+            <td>${d.stripeAccountId||'-'}</td>
+            <td>${d.timestamp ? new Date(d.timestamp.seconds*1000).toLocaleString('fr-FR') : '-'}</td>
+            <td>${d.userId||'-'}</td>
+            <td>
+              ${d.status === 'En attente' ? `
+                <button class="action-btn" onclick="updateWithdrawalStatus('${doc.id}','Validé')">Valider</button>
+                <button class="action-btn" onclick="updateWithdrawalStatus('${doc.id}','Refusé')">Refuser</button>
+              ` : ''}
+            </td>
+          </tr>
+        `;
+      });
+    }
+    async function updateWithdrawalStatus(id, status) {
+      await db.collection('demandederetraits').doc(id).update({ status });
+      loadWithdrawals();
+    }
+
+    // Chargement initial
+    window.onload = () => { loadEvents(); loadUsers(); loadGroups(); loadWithdrawals(); };
+
+    function closeModal(e) {
+      if (e) e.stopPropagation();
+      document.getElementById('modal').style.display = 'none';
+      document.getElementById('modal').innerHTML = '';
+    }
+  </script>
 </body>
 </html>
