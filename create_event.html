@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Créer un événement</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #232526 0%, #1de9b6 100%);
+      font-family: 'Poppins', sans-serif;
+      color: #fff;
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      background: rgba(20, 20, 20, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+      padding: 32px 18px;
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      box-sizing: border-box;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 2rem;
+      font-weight: bold;
+      color: #1de9b6;
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: #fff;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #1de9b6;
+      background: #232526;
+      color: #fff;
+      font-size: 1rem;
+      font-family: inherit;
+      margin-bottom: 4px;
+      box-sizing: border-box;
+    }
+    input[type="file"] {
+      background: none;
+      color: #fff;
+      border: none;
+      padding: 0;
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+      color: #fff;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+    .btn svg {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+    .preview-img {
+      width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      display: none;
+    }
+    .error {
+      color: #ff5252;
+      font-size: 0.95em;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .success {
+      color: #43e97b;
+      font-size: 1em;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    @media (max-width: 600px) {
+      body {
+        align-items: flex-start;
+        padding: 0;
+      }
+      .container {
+        max-width: 100vw;
+        min-height: 100vh;
+        border-radius: 0;
+        padding: 18px 4vw 24px 4vw;
+        box-shadow: none;
+      }
+      h2 {
+        font-size: 1.3rem;
+      }
+      input, textarea, select {
+        font-size: 1em;
+        padding: 11px 8px;
+      }
+      .btn {
+        font-size: 1em;
+        padding: 13px;
+      }
+      .preview-img {
+        max-height: 120px;
+      }
+      button[onclick] {
+        left: 10px !important;
+        top: 10px !important;
+        font-size: 1.2em !important;
+      }
+    }
+    @media (max-width: 400px) {
+      .container {
+        padding: 8px 1vw 16px 1vw;
+      }
+      h2 {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+  <!-- Firebase App (the core Firebase SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <button onclick="window.history.back()" style="background:none;border:none;position:absolute;left:24px;top:24px;cursor:pointer;z-index:2"><span style="font-size:1.6em;color:#1de9b6">⟵</span></button>
+    <h2>Créer un événement</h2>
+    <form id="eventForm" autocomplete="off" novalidate>
+      <div class="form-group">
+        <label for="name">Nom de l'événement *</label>
+        <input type="text" id="name" required placeholder="Ex: Soirée Étudiante" />
+      </div>
+      <div class="form-group">
+        <label for="location">Lieu *</label>
+        <input type="text" id="location" required placeholder="Ex: Paris, 8ème" />
+      </div>
+      <div class="form-group">
+        <label for="etablissement">Établissement</label>
+        <input type="text" id="etablissement" placeholder="Nom de l'établissement" />
+      </div>
+      <div class="form-group">
+        <label for="date">Date *</label>
+        <input type="date" id="date" required min="2024-01-01" />
+      </div>
+      <div class="form-group" style="display: flex; gap: 10px;">
+        <div style="flex:1">
+          <label for="startTime">Heure de début *</label>
+          <input type="time" id="startTime" required />
+        </div>
+        <div style="flex:1">
+          <label for="endTime">Heure de fin *</label>
+          <input type="time" id="endTime" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="description">Description</label>
+        <textarea id="description" rows="3" placeholder="Décris ton événement (optionnel)"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="image">Image</label>
+        <input type="file" id="image" accept="image/*" />
+        <img id="preview" class="preview-img" src="https://via.placeholder.com/400x180/232526/1de9b6?text=Prévisualisation" style="display:block;" />
+      </div>
+      <div id="formError" class="error"></div>
+      <div id="formSuccess" class="success"></div>
+      <button type="submit" class="btn" id="submitBtn">
+        <span id="btnText">Créer</span>
+        <span id="btnLoader" style="display:none;margin-left:8px;vertical-align:middle"><svg width="18" height="18" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-dasharray="31.415, 31.415" transform="rotate(72.0001 25 25)"><animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" values="0 25 25;360 25 25" keyTimes="0;1"/></circle></svg></span>
+      </button>
+    </form>
+  </div>
+  <script>
+    // TODO: Remplacer par ta config Firebase
+    const firebaseConfig = {
+       apiKey: "AIzaSyCU2FwOTsns4ruP1mnlr8gKuZl04eqFsK4",
+        authDomain: "ensemble-3ccfc.firebaseapp.com",
+        projectId: "ensemble-3ccfc",
+        storageBucket: "ensemble-3ccfc.firebasestorage.app",
+        messagingSenderId: "167133589536",
+        appId: "1:167133589536:web:17e9e0a6b5df193d5d4c45",
+        measurementId: "G-9STXVWW560"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // Prévisualisation image améliorée
+    const imageInput = document.getElementById('image');
+    const previewImg = document.getElementById('preview');
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          previewImg.src = ev.target.result;
+          previewImg.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        previewImg.src = 'https://via.placeholder.com/400x180/232526/1de9b6?text=Prévisualisation';
+        previewImg.style.display = 'block';
+      }
+    });
+
+    // Feedback UX sur les champs
+    document.querySelectorAll('input,textarea').forEach(el => {
+      el.addEventListener('focus', () => el.style.boxShadow = '0 0 0 2px #1de9b6');
+      el.addEventListener('blur', () => el.style.boxShadow = 'none');
+    });
+
+    // Gestion du bouton loader
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const btnLoader = document.getElementById('btnLoader');
+    document.getElementById('eventForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      document.getElementById('formError').textContent = '';
+      document.getElementById('formSuccess').textContent = '';
+      submitBtn.disabled = true;
+      btnText.style.display = 'none';
+      btnLoader.style.display = 'inline-block';
+
+      // Validation améliorée
+      const name = document.getElementById('name').value.trim();
+      const location = document.getElementById('location').value.trim();
+      const etablissement = document.getElementById('etablissement').value.trim();
+      const date = document.getElementById('date').value;
+      const startTime = document.getElementById('startTime').value;
+      const endTime = document.getElementById('endTime').value;
+      const description = document.getElementById('description').value.trim();
+      const imageFile = imageInput.files[0];
+      if (!name || !location || !date || !startTime || !endTime) {
+        document.getElementById('formError').textContent = 'Veuillez remplir tous les champs obligatoires.';
+        submitBtn.disabled = false;
+        btnText.style.display = 'inline';
+        btnLoader.style.display = 'none';
+        return;
+      }
+      if (name.length < 3) {
+        document.getElementById('formError').textContent = "Le nom de l'événement doit faire au moins 3 caractères.";
+        submitBtn.disabled = false;
+        btnText.style.display = 'inline';
+        btnLoader.style.display = 'none';
+        return;
+      }
+      // Validation heure de fin > début (multi-jour inclus)
+      const startDateTime = new Date(`${date}T${startTime}`);
+      let endDateTime = new Date(`${date}T${endTime}`);
+      if (endDateTime <= startDateTime) {
+        // Si l'heure de fin est avant ou égale à l'heure de début, on considère le lendemain
+        endDateTime.setDate(endDateTime.getDate() + 1);
+      }
+      if (endDateTime <= startDateTime) {
+        document.getElementById('formError').textContent = "L'heure de fin doit être après l'heure de début.";
+        submitBtn.disabled = false;
+        btnText.style.display = 'inline';
+        btnLoader.style.display = 'none';
+        return;
+      }
+      // Upload image si présente
+      let imageUrl = '';
+      if (imageFile) {
+        try {
+          const storageRef = storage.ref().child(`events/${Date.now()}_${imageFile.name}`);
+          const snapshot = await storageRef.put(imageFile);
+          imageUrl = await snapshot.ref.getDownloadURL();
+        } catch (err) {
+          document.getElementById('formError').textContent = "Erreur lors de l'upload de l'image.";
+          submitBtn.disabled = false;
+          btnText.style.display = 'inline';
+          btnLoader.style.display = 'none';
+          return;
+        }
+      }
+      // Ajout Firestore
+      try {
+        await db.collection('events').add({
+          name,
+          location,
+          etablissement,
+          description,
+          date: firebase.firestore.Timestamp.fromDate(new Date(date)),
+          startTime,
+          endTime,
+          startDateTime: firebase.firestore.Timestamp.fromDate(startDateTime),
+          endDateTime: firebase.firestore.Timestamp.fromDate(endDateTime),
+          imageUrl: imageUrl || null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        document.getElementById('formSuccess').textContent = 'Événement créé avec succès !';
+        document.getElementById('eventForm').reset();
+        previewImg.src = 'https://via.placeholder.com/400x180/232526/1de9b6?text=Prévisualisation';
+        previewImg.style.display = 'block';
+      } catch (err) {
+        document.getElementById('formError').textContent = "Erreur lors de la création de l'événement.";
+      }
+      submitBtn.disabled = false;
+      btnText.style.display = 'inline';
+      btnLoader.style.display = 'none';
+    });
+  </script>
+</body>
+</html>
