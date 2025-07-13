@@ -165,58 +165,172 @@
       display: block;
       margin-bottom: 8px;
     }
-    @media (max-width: 700px) {
-      .container { padding: 10px 2vw 40px 2vw; }
-      th, td { font-size: 0.93rem; }
-      .details-content { padding: 18px 6px; }
-    }
-    @media (max-width: 500px) {
-      .container { padding: 2px 0 10px 0; }
-      th, td { padding: 7px 2px; }
-      .details-content { width: 98vw; }
-    }
     /* Dashboard specific styles */
     #dashboardSection {
       display: none;
     }
-    .dashboard-cards {
-      display: flex;
-      gap: 2rem;
+    .dashboard-overview {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
       margin-bottom: 2rem;
-      justify-content: center;
     }
-    .dashboard-card {
-      background: linear-gradient(135deg, #f8fafc 60%, #e0e7ef 100%);
-      border-radius: 1.2rem;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-      padding: 2rem 2.5rem;
-      min-width: 160px;
+    .overview-card {
+      background: linear-gradient(135deg, #232526 0%, rgba(29, 233, 182, 0.1) 100%);
+      border: 1px solid #1de9b6;
+      border-radius: 16px;
+      padding: 1.5rem;
       text-align: center;
-      font-size: 1.2rem;
-      color: #222;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      overflow: hidden;
     }
-    .dashboard-card h3 {
+    .overview-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #1de9b6, #00bcd4);
+    }
+    .overview-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(29, 233, 182, 0.2);
+    }
+    .card-icon {
       font-size: 2.5rem;
-      margin: 0 0 0.5rem 0;
-      color: #007bff;
-      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #1de9b6;
+    }
+    .card-value {
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: #1de9b6;
+      margin-bottom: 0.5rem;
+    }
+    .card-label {
+      font-size: 1rem;
+      color: #ccc;
+      margin-bottom: 0.5rem;
+    }
+    .card-change {
+      font-size: 0.9rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 12px;
+      display: inline-block;
+    }
+    .card-change.positive {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
+    }
+    .card-change.negative {
+      background: rgba(244, 67, 54, 0.2);
+      color: #f44336;
     }
     .dashboard-charts {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
       gap: 2rem;
-      justify-content: center;
+      margin-bottom: 2rem;
     }
-    .dashboard-charts canvas {
-      background: #fff;
-      border-radius: 1rem;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-      padding: 1rem;
-      max-width: 420px;
-      width: 100%;
+    .chart-container {
+      background: linear-gradient(135deg, rgba(35, 37, 38, 0.9) 0%, rgba(29, 233, 182, 0.05) 100%);
+      border: 1px solid rgba(29, 233, 182, 0.3);
+      border-radius: 16px;
+      padding: 1.5rem;
+      position: relative;
+    }
+    .chart-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #1de9b6;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .dashboard-insights {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .insight-card {
+      background: linear-gradient(135deg, #232526 0%, rgba(29, 233, 182, 0.05) 100%);
+      border: 1px solid rgba(29, 233, 182, 0.3);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .insight-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #1de9b6;
+      margin-bottom: 1rem;
+    }
+    .insight-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .insight-list li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(29, 233, 182, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .insight-list li:last-child {
+      border-bottom: none;
+    }
+    .activity-feed {
+      background: linear-gradient(135deg, #232526 0%, rgba(29, 233, 182, 0.05) 100%);
+      border: 1px solid rgba(29, 233, 182, 0.3);
+      border-radius: 12px;
+      padding: 1.5rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .activity-item {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(29, 233, 182, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+    .activity-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #1de9b6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: #232526;
+    }
+    .activity-content {
+      flex: 1;
+    }
+    .activity-text {
+      font-size: 0.9rem;
+      margin-bottom: 0.2rem;
+    }
+    .activity-time {
+      font-size: 0.8rem;
+      color: #999;
     }
     @media (max-width: 900px) {
-      .dashboard-cards, .dashboard-charts { flex-direction: column; align-items: center; }
+      .dashboard-overview {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+      .dashboard-charts {
+        grid-template-columns: 1fr;
+      }
+      .dashboard-insights {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -345,23 +459,81 @@
     </div>
     <section id="dashboardSection" style="display:none;">
       <h2>Dashboard</h2>
-      <div class="dashboard-cards">
-        <div class="dashboard-card">
-          <h3 id="statEvents">0</h3>
-          <p>Événements</p>
+      <div class="dashboard-overview">
+        <div class="overview-card">
+          <div class="card-icon">📅</div>
+          <div class="card-value" id="statEventsValue">0</div>
+          <div class="card-label">Événements</div>
+          <div class="card-change positive">+10%</div>
         </div>
-        <div class="dashboard-card">
-          <h3 id="statUsers">0</h3>
-          <p>Utilisateurs</p>
+        <div class="overview-card">
+          <div class="card-icon">👥</div>
+          <div class="card-value" id="statUsersValue">0</div>
+          <div class="card-label">Utilisateurs</div>
+          <div class="card-change negative">-5%</div>
         </div>
-        <div class="dashboard-card">
-          <h3 id="statGroups">0</h3>
-          <p>Groupes</p>
+        <div class="overview-card">
+          <div class="card-icon">📊</div>
+          <div class="card-value" id="statGroupsValue">0</div>
+          <div class="card-label">Groupes</div>
+          <div class="card-change positive">+15%</div>
+        </div>
+        <div class="overview-card">
+          <div class="card-icon">💰</div>
+          <div class="card-value" id="statMoneyValue">0</div>
+          <div class="card-label">Argent en circulation</div>
+          <div class="card-change positive">+8%</div>
         </div>
       </div>
       <div class="dashboard-charts">
-        <canvas id="eventsChart" height="120"></canvas>
-        <canvas id="usersChart" height="120"></canvas>
+        <div class="chart-container">
+          <canvas id="eventsChart" height="120"></canvas>
+          <div class="chart-title">Événements par mois</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="usersChart" height="120"></canvas>
+          <div class="chart-title">Utilisateurs par mois</div>
+        </div>
+      </div>
+      <div class="dashboard-insights">
+        <div class="insight-card">
+          <div class="insight-title">Derniers Événements</div>
+          <ul class="insight-list" id="recentEventsList">
+            <li><b>Aucun événement récent</b></li>
+          </ul>
+        </div>
+        <div class="insight-card">
+          <div class="insight-title">Derniers Utilisateurs</div>
+          <ul class="insight-list" id="recentUsersList">
+            <li><b>Aucun utilisateur récent</b></li>
+          </ul>
+        </div>
+      </div>
+      <div class="activity-feed" id="activityFeed">
+        <h3 style="margin:0 0 1rem 0;color:#1de9b6;">Activité Récente</h3>
+        <div style="max-height:300px;overflow-y:auto;">
+          <div class="activity-item">
+            <div class="activity-icon">🎉</div>
+            <div class="activity-content">
+              <div class="activity-text">Événement créé : <b>Concert Live</b></div>
+              <div class="activity-time">Il y a 2 heures</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-icon">🆕</div>
+            <div class="activity-content">
+              <div class="activity-text">Nouvel utilisateur inscrit : <b>Jean Dupont</b></div>
+              <div class="activity-time">Il y a 3 heures</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-icon">📅</div>
+            <div class="activity-content">
+              <div class="activity-text">Événement à venir : <b>Atelier de Danse</b></div>
+              <div class="activity-time">Demain</div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   </div>
