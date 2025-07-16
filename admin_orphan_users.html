@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Utilisateurs Auth Orphelins</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #232526 0%, #1de9b6 100%);
+      font-family: 'Poppins', sans-serif;
+      color: #fff;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 10px 60px 10px;
+    }
+    h1 {
+      text-align: center;
+      color: #ff5252;
+      font-size: 2.2rem;
+      margin-bottom: 30px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #607d8b;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+      margin-bottom: 30px;
+    }
+    th, td {
+      padding: 12px 8px;
+      text-align: left;
+      border-bottom: 1px solid #fff;
+      font-size: 0.98rem;
+    }
+    th {
+      background: #455a64;
+      color: #fff;
+      font-weight: bold;
+      font-size: 1.05rem;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .action-btn {
+      background: #ff5252;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-size: 0.95em;
+      cursor: pointer;
+      margin-right: 6px;
+      transition: background 0.2s;
+    }
+    .action-btn:hover {
+      background: #ff1744;
+    }
+    .user-img {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 1px solid #fff;
+      background: #232526;
+    }
+    .badge-auth {
+      font-size: 0.9em;
+      background: #ff5252;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 8px;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Utilisateurs Auth sans Firestore</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Photo</th>
+          <th>Nom</th>
+          <th>Email</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="orphanUsersBody">
+        <tr><td colspan="4" style="text-align:center;color:#fff;">Chargement...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>
+    async function loadOrphanUsers() {
+      document.getElementById('orphanUsersBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#fff;">Chargement...</td></tr>';
+      // Récupérer les utilisateurs Firestore
+      let firestoreIds = [];
+      try {
+        const resFS = await fetch('/list-firestore-users'); // API qui retourne les IDs Firestore
+        if (resFS.ok) {
+          firestoreIds = await resFS.json(); // [id1, id2, ...]
+        }
+      } catch(e) {}
+      // Récupérer les utilisateurs Auth
+      let authUsers = [];
+      try {
+        const resAuth = await fetch('/list-auth-users');
+        if (resAuth.ok) {
+          authUsers = await resAuth.json(); // [{uid, email, displayName, photoURL}]
+        }
+      } catch(e) {}
+      // Filtrer ceux qui ne sont pas dans Firestore
+      const orphanUsers = authUsers.filter(u => !firestoreIds.includes(u.uid));
+      if (orphanUsers.length === 0) {
+        document.getElementById('orphanUsersBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#fff;">Aucun utilisateur Auth orphelin</td></tr>';
+        return;
+      }
+      document.getElementById('orphanUsersBody').innerHTML = orphanUsers.map(u => `
+        <tr>
+          <td><img class="user-img" src="${u.photoURL||'https://via.placeholder.com/50x50/232526/1de9b6?text=User'}" alt="img"></td>
+          <td>${u.displayName||u.email||u.uid} <span class="badge-auth">AUTH SEUL</span></td>
+          <td>${u.email||''}</td>
+          <td><button class="action-btn" onclick="deleteAuthUser('${u.uid}')">Supprimer Auth</button></td>
+        </tr>
+      `).join('');
+    }
+    async function deleteAuthUser(uid) {
+      if (!confirm('Supprimer cet utilisateur Auth ?')) return;
+      await fetch(`/delete-auth-user?uid=${uid}`, {method:'POST'});
+      loadOrphanUsers();
+    }
+    window.onload = loadOrphanUsers;
+  </script>
+</body>
+</html>

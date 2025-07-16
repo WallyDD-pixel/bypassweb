@@ -25,6 +25,12 @@
       font-size: 2.2rem;
       margin-bottom: 30px;
     }
+    h2 {
+      color: #ccc;
+      margin-top: 40px;
+      text-align: center;
+      font-size: 1.3em;
+    }
     .search-bar {
       display: flex;
       justify-content: center;
@@ -148,6 +154,27 @@
       .events-table th, .events-table td { padding: 7px 2px; }
       .details-content { width: 98vw; }
     }
+    .events-table.upcoming-events {
+      background: linear-gradient(135deg, #1de9b6 0%, #232526 100%);
+    }
+    .events-table.upcoming-events th {
+      background: #1de9b6;
+      color: #232526;
+    }
+    .events-table.upcoming-events td {
+      border-bottom: 1px solid #1de9b6;
+    }
+    .events-table.past-events {
+      background: linear-gradient(135deg, #232526 0%, #607d8b 100%);
+    }
+    .events-table.past-events th {
+      background: #607d8b;
+      color: #fff;
+    }
+    .events-table.past-events td {
+      border-bottom: 1px solid #607d8b;
+      color: #bbb;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -178,6 +205,26 @@
         </tbody>
       </table>
     </div>
+    <h2>Événements passés</h2>
+    <div style="overflow-x:auto;">
+      <table class="events-table" id="pastEventsTable">
+        <thead>
+          <tr>
+            <th>Image</th>
+            <th>Nom</th>
+            <th>Date</th>
+            <th>Début</th>
+            <th>Fin</th>
+            <th>Lieu</th>
+            <th>Établissement</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="pastEventsBody">
+          <tr><td colspan="8" style="text-align:center;color:#ccc;">Chargement...</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
   <div id="modal" style="display:none;"></div>
   <script>
@@ -197,6 +244,7 @@
     async function loadEvents() {
       const search = document.getElementById('searchInput').value.trim().toLowerCase();
       document.getElementById('eventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>';
+      document.getElementById('pastEventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ccc;">Chargement...</td></tr>';
       let query = db.collection('events').orderBy('date', 'desc');
       const snapshot = await query.get();
       allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -210,9 +258,34 @@
       }
       if (filtered.length === 0) {
         document.getElementById('eventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ff5252;">Aucun événement trouvé</td></tr>';
+        document.getElementById('pastEventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ff5252;">Aucun événement trouvé</td></tr>';
         return;
       }
-      document.getElementById('eventsBody').innerHTML = filtered.map(ev => `
+      const now = new Date('2025-07-15T00:00:00'); // Date du jour fixée
+      const upcomingEvents = filtered.filter(ev => {
+        const eventDate = ev.date && ev.date.seconds ? new Date(ev.date.seconds*1000) : new Date(ev.date);
+        return eventDate >= now;
+      });
+      const pastEvents = filtered.filter(ev => {
+        const eventDate = ev.date && ev.date.seconds ? new Date(ev.date.seconds*1000) : new Date(ev.date);
+        return eventDate < now;
+      });
+      document.getElementById('eventsBody').innerHTML = upcomingEvents.map(ev => `
+        <tr>
+          <td><img class="event-img" src="${ev.imageUrl||'https://via.placeholder.com/70x45/232526/1de9b6?text=Image'}" alt="img"></td>
+          <td>${ev.name||''}</td>
+          <td>${formatDate(ev.date)}</td>
+          <td>${ev.startTime||''}</td>
+          <td>${ev.endTime||''}</td>
+          <td>${ev.location||''}</td>
+          <td>${ev.etablissement||''}</td>
+          <td>
+            <button class="action-btn details-btn" onclick="showDetails('${ev.id}')">Détails</button>
+            <button class="action-btn" onclick="deleteEvent('${ev.id}')">Supprimer</button>
+          </td>
+        </tr>
+      `).join('');
+      document.getElementById('pastEventsBody').innerHTML = pastEvents.map(ev => `
         <tr>
           <td><img class="event-img" src="${ev.imageUrl||'https://via.placeholder.com/70x45/232526/1de9b6?text=Image'}" alt="img"></td>
           <td>${ev.name||''}</td>

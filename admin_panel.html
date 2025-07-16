@@ -460,7 +460,7 @@
     <div id="section-events" class="section active">
       <button class="action-btn" style="background:#1de9b6;color:#232526;margin-bottom:18px;" onclick="window.open('create_event.html', '_blank')">Créer un événement</button>
       <div class="table-container">
-        <table id="eventsTable">
+        <table class="events-table upcoming-events" id="eventsTable">
           <thead>
             <tr>
               <th>Image</th>
@@ -475,6 +475,26 @@
           </thead>
           <tbody id="eventsBody">
             <tr><td colspan="8" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h2 style="color:#ccc;margin-top:40px;text-align:center;font-size:1.3em;">Événements passés</h2>
+      <div class="table-container">
+        <table class="events-table past-events" id="pastEventsTable">
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Nom</th>
+              <th>Date</th>
+              <th>Début</th>
+              <th>Fin</th>
+              <th>Lieu</th>
+              <th>Établissement</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="pastEventsBody">
+            <tr><td colspan="8" style="text-align:center;color:#ccc;">Chargement...</td></tr>
           </tbody>
         </table>
       </div>
@@ -848,9 +868,35 @@
       allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       if (allEvents.length === 0) {
         document.getElementById('eventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ff5252;">Aucun événement trouvé</td></tr>';
+        document.getElementById('pastEventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ff5252;">Aucun événement trouvé</td></tr>';
         return;
       }
-      document.getElementById('eventsBody').innerHTML = allEvents.map(ev => `
+      const now = new Date('2025-07-15T00:00:00');
+      const upcomingEvents = allEvents.filter(ev => {
+        const eventDate = ev.date && ev.date.seconds ? new Date(ev.date.seconds*1000) : new Date(ev.date);
+        return eventDate >= now;
+      });
+      const pastEvents = allEvents.filter(ev => {
+        const eventDate = ev.date && ev.date.seconds ? new Date(ev.date.seconds*1000) : new Date(ev.date);
+        return eventDate < now;
+      });
+      document.getElementById('eventsBody').innerHTML = upcomingEvents.map(ev => `
+        <tr>
+          <td><img class="event-img" src="${ev.imageUrl||'https://via.placeholder.com/70x45/232526/1de9b6?text=Image'}" alt="img"></td>
+          <td>${ev.name||''}</td>
+          <td>${formatDate(ev.date)}</td>
+          <td>${ev.startTime||''}</td>
+          <td>${ev.endTime||''}</td>
+          <td>${ev.location||''}</td>
+          <td>${ev.etablissement||''}</td>
+          <td>
+            <button class="action-btn details-btn" onclick="showEventDetails('${ev.id}')">Détails</button>
+            <button class="action-btn" style="background:#ffc107;color:#232526;" onclick="openEventForm('${ev.id}')">✏️</button>
+            <button class="action-btn" onclick="deleteEvent('${ev.id}')">Supprimer</button>
+          </td>
+        </tr>
+      `).join('');
+      document.getElementById('pastEventsBody').innerHTML = pastEvents.map(ev => `
         <tr>
           <td><img class="event-img" src="${ev.imageUrl||'https://via.placeholder.com/70x45/232526/1de9b6?text=Image'}" alt="img"></td>
           <td>${ev.name||''}</td>
@@ -948,29 +994,59 @@
 
     async function loadUsers() {
       document.getElementById('usersBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>';
+      // Récupérer les utilisateurs Firestore
       let query = db.collection('users').orderBy('createdAt', 'desc');
       const snapshot = await query.get();
-      allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const firestoreUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Récupérer les utilisateurs Auth (nécessite une Cloud Function ou API admin)
+      let authUsers = [];
+      try {
+        const res = await fetch('/list-auth-users'); // Doit pointer vers une API qui retourne la liste des utilisateurs Auth
+        if (res.ok) {
+          authUsers = await res.json(); // [{uid, email, displayName, ...}]
+        }
+      } catch(e) {}
+      // Fusionner les deux listes
+      let allUsers = firestoreUsers.map(u => ({...u, source: 'firestore'}));
+      // Ajouter les utilisateurs Auth qui ne sont pas dans Firestore
+      authUsers.forEach(au => {
+        if (!firestoreUsers.find(u => u.id === au.uid)) {
+          allUsers.push({
+            id: au.uid,
+            email: au.email,
+            username: au.displayName || au.email,
+            photoURL: '',
+            sexe: '',
+            createdAt: '',
+            source: 'auth'
+          });
+        }
+      });
       if (allUsers.length === 0) {
         document.getElementById('usersBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff5252;">Aucun utilisateur trouvé</td></tr>';
         return;
       }
       document.getElementById('usersBody').innerHTML = allUsers.map(u => `
-        <tr>
+        <tr style="${u.source==='auth' ? 'background:#607d8b;color:#fff;' : ''}">
           <td class="checkbox-cell"><input type="checkbox" class="user-checkbox" value="${u.id}" onchange="updateSelection()"></td>
           <td><img class="user-img" src="${u.photoURL||'https://via.placeholder.com/50x50/232526/1de9b6?text=User'}" alt="img" onclick="showImageModal('${u.photoURL||'https://via.placeholder.com/400x400/232526/1de9b6?text=User'}')"></td>
-          <td>${u.username||u.displayName||''}</td>
+          <td>${u.username||''} ${u.source==='auth' ? '<span style=\'font-size:0.9em;background:#ff5252;color:#fff;padding:2px 8px;border-radius:8px;margin-left:8px;\'>AUTH SEUL</span>' : ''}</td>
           <td>${u.email||''}</td>
           <td>${u.sexe||''}</td>
-          <td>${u.createdAt ? new Date(u.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}</td>
+          <td>${u.createdAt ? (u.createdAt.seconds ? new Date(u.createdAt.seconds*1000).toLocaleString('fr-FR') : u.createdAt) : ''}</td>
           <td>
             <button class="action-btn details-btn" onclick="showUserDetails('${u.id}')">Détails</button>
-            <button class="action-btn" style="background:#ffc107;color:#232526;" onclick="openUserForm('${u.id}')">✏️</button>
-            <button class="action-btn" onclick="deleteUser('${u.id}')">Supprimer</button>
+            ${u.source==='auth' ? `<button class="action-btn" style="background:#ff5252;" onclick="deleteAuthUser('${u.id}')">Supprimer Auth</button>` : `<button class="action-btn" style="background:#ffc107;color:#232526;" onclick="openUserForm('${u.id}')">✏️</button><button class="action-btn" onclick="deleteUser('${u.id}')">Supprimer</button>`}
           </td>
         </tr>
       `).join('');
       clearSelection();
+    }
+    // Fonction pour supprimer un utilisateur Auth uniquement (nécessite une API serveur)
+    async function deleteAuthUser(uid) {
+      if (!confirm('Supprimer cet utilisateur Auth ?')) return;
+      await fetch(`/delete-auth-user?uid=${uid}`, {method:'POST'});
+      loadUsers();
     }
 
     // Fonctions de sélection multiple
