@@ -446,15 +446,28 @@
       <button id="btnWithdrawals" onclick="showSection('withdrawals')">Retraits</button>
     </div>
     <div id="section-dashboard" class="section">
-      <div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin-bottom:30px;">
-        <div class="stat-card" id="statEvents"><span class="stat-value">-</span><span class="stat-label">Événements</span></div>
-        <div class="stat-card" id="statUsers"><span class="stat-value">-</span><span class="stat-label">Utilisateurs</span></div>
-        <div class="stat-card" id="statGroups"><span class="stat-value">-</span><span class="stat-label">Groupes</span></div>
-        <div class="stat-card" id="statMoney"><span class="stat-value">-</span><span class="stat-label">Argent en circulation</span></div>
-      </div>
+      <div id="dashboardStats"></div>
       <div style="max-width:900px;margin:0 auto;">
         <canvas id="chartEvents" height="110"></canvas>
         <canvas id="chartUsers" height="110" style="margin-top:32px;"></canvas>
+      </div>
+      <div class="dashboard-insights">
+        <div class="insight-card">
+          <div class="insight-title">📈 Tendances</div>
+          <ul class="insight-list" id="trendsList">
+            <li><span>Événements créés</span><span class="trend-value" id="trendEvents">0</span></li>
+            <li><span>Utilisateurs inscrits</span><span class="trend-value" id="trendUsers">0</span></li>
+            <li><span>Groupes formés</span><span class="trend-value" id="trendGroups">0</span></li>
+          </ul>
+        </div>
+        <div class="insight-card">
+          <div class="insight-title">⚙️ Activité récente</div>
+          <div class="activity-feed" id="recentActivityFeed">
+            <div class="activity-scroll" id="activityScroll">
+              <!-- Activity items will be injected here by JavaScript -->
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div id="section-events" class="section active">
@@ -534,12 +547,13 @@
               <th>Ville</th>
               <th>Créateur</th>
               <th>Membres</th>
+              <th>Événement</th>
               <th>Date création</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody id="groupsBody">
-            <tr><td colspan="6" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>
+            <tr><td colspan="7" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>
           </tbody>
         </table>
       </div>
@@ -603,7 +617,7 @@
         </div>
         <div class="overview-card">
           <div class="card-icon">💰</div>
-          <div class="card-value" id="statMoneyValue">0.00 €</div>
+          <div class="card-value" id="statMoneyValue">0</div>
           <div class="card-label">Argent en circulation</div>
           <div class="card-change positive">+3.8%</div>
         </div>
@@ -789,6 +803,26 @@
             </div>
           </div>
         `;
+        
+        // Séparation événements à venir / passés
+        const now = new Date('2025-07-21T00:00:00');
+        let upcomingEvents = 0;
+        let pastEvents = 0;
+        eventsSnap.forEach(doc => {
+          const d = doc.data();
+          const eventDate = d.date && d.date.seconds ? new Date(d.date.seconds*1000) : new Date(d.date);
+          if (eventDate >= now) upcomingEvents++;
+          else pastEvents++;
+        });
+        // Affichage unique dans le dashboard
+        document.getElementById('dashboardStats').innerHTML = `
+          <div style='display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin-bottom:30px;'>
+            <div class="stat-card"><span class="stat-value">${upcomingEvents}</span><span class="stat-label">Événements à venir</span></div>
+            <div class="stat-card"><span class="stat-value">${pastEvents}</span><span class="stat-label">Événements passés</span></div>
+            <div class="stat-card"><span class="stat-value">${usersSnap.size}</span><span class="stat-label">Utilisateurs</span></div>
+            <div class="stat-card"><span class="stat-value">${groupsSnap.size}</span><span class="stat-label">Groupes</span></div>
+            <div class="stat-card"><span class="stat-value">${totalMoney.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</span><span class="stat-label">Argent en circulation</span></div>
+          </div>`;
         
         // Préparation des données pour les graphiques
         const eventsByMonth = {};
@@ -1170,32 +1204,66 @@
 
     // GROUPS
     let allGroups = [];
+    let allUsersMap = {};
+    let allEventsMap = {};
     async function loadGroups() {
-      document.getElementById('groupsBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>';
+      document.getElementById('groupsBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>';
+      // Charger tous les users et events pour mapping rapide
+      const usersSnap = await db.collection('users').get();
+      allUsersMap = {};
+      usersSnap.forEach(doc => allUsersMap[doc.id] = doc.data());
+      const eventsSnap = await db.collection('events').get();
+      allEventsMap = {};
+      eventsSnap.forEach(doc => allEventsMap[doc.id] = doc.data());
+      // Charger les groupes
       let query = db.collection('groups').orderBy('createdAt', 'desc');
       const snapshot = await query.get();
       allGroups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       if (allGroups.length === 0) {
-        document.getElementById('groupsBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#ff5252;">Aucun groupe trouvé</td></tr>';
+        document.getElementById('groupsBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff5252;">Aucun groupe trouvé</td></tr>';
         return;
       }
-      document.getElementById('groupsBody').innerHTML = allGroups.map(g => `
-        <tr>
-          <td>${g.name||''}</td>
-          <td>${g.city||g.ville||''}</td>
-          <td>${g.creatorName||g.creatorId||''}</td>
-          <td>${g.members ? Object.keys(g.members).length : 0}</td>
-          <td>${g.createdAt ? new Date(g.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}</td>
-          <td>
-            <button class="action-btn details-btn" onclick="showGroupDetails('${g.id}')">Détails</button>
-            <button class="action-btn" onclick="deleteGroup('${g.id}')">Supprimer</button>
-          </td>
-        </tr>
-      `).join('');
+      document.getElementById('groupsBody').innerHTML = allGroups.map(g => {
+        // Affichage membres (avatars + noms, max 4)
+        let members = g.members ? Object.keys(g.members) : [];
+        let membersHtml = members.slice(0,4).map(uid => {
+          const u = allUsersMap[uid]||{};
+          return `<span title="${u.username||u.displayName||u.email||uid}" style='display:inline-block;margin-right:2px;'><img src="${u.photoURL||'https://via.placeholder.com/32x32/232526/1de9b6?text=U'}" style='width:32px;height:32px;border-radius:50%;vertical-align:middle;border:1px solid #1de9b6;margin-right:2px;'>${u.username?'<span style=\'font-size:0.9em;color:#1de9b6;\'>'+(u.username.split(' ')[0])+'</span>':''}</span>`;
+        }).join('');
+        if (members.length > 4) membersHtml += ` <span style='color:#1de9b6;font-size:0.95em;'>+${members.length-4}</span>`;
+        // Affichage événement associé
+        let eventLabel = g.eventId && allEventsMap[g.eventId] ? (allEventsMap[g.eventId].name||'') : '-';
+        return `
+          <tr>
+            <td>${g.name||''}</td>
+            <td>${g.city||g.ville||''}</td>
+            <td>${g.creatorName||g.creatorId||''}</td>
+            <td>${membersHtml||'Aucun'}</td>
+            <td>${eventLabel}</td>
+            <td>${g.createdAt ? new Date(g.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}</td>
+            <td>
+              <button class="action-btn details-btn" onclick="showGroupDetails('${g.id}')">Détails</button>
+              <button class="action-btn" onclick="deleteGroup('${g.id}')">Supprimer</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
     async function showGroupDetails(id) {
       const g = allGroups.find(e => e.id === id);
       if (!g) return;
+      // Liste complète des membres
+      let members = g.members ? Object.keys(g.members) : [];
+      let membersHtml = members.length ? members.map(uid => {
+        const u = allUsersMap[uid]||{};
+        return `<div style='display:flex;align-items:center;margin-bottom:6px;'><img src="${u.photoURL||'https://via.placeholder.com/32x32/232526/1de9b6?text=U'}" style='width:32px;height:32px;border-radius:50%;margin-right:8px;border:1px solid #1de9b6;'><span>${u.username||u.displayName||u.email||uid}</span></div>`;
+      }).join('') : '<i style="color:#aaa">Aucun membre</i>';
+      // Événement associé
+      let eventHtml = '-';
+      if (g.eventId && allEventsMap[g.eventId]) {
+        const ev = allEventsMap[g.eventId];
+        eventHtml = `<b>${ev.name||''}</b><br><span style='color:#1de9b6;'>${ev.date ? new Date(ev.date.seconds*1000).toLocaleDateString('fr-FR') : ''}</span><br>${ev.location||''}`;
+      }
       document.getElementById('modal').innerHTML = `
         <div class="details-modal" onclick="closeModal(event)">
           <div class="details-content" onclick="event.stopPropagation()">
@@ -1203,9 +1271,12 @@
             <h2>${g.name||''}</h2>
             <p><b>Ville :</b> ${g.city||g.ville||''}<br>
             <b>Créateur :</b> ${g.creatorName||g.creatorId||''}<br>
-            <b>Membres :</b> ${g.members ? Object.keys(g.members).length : 0}<br>
             <b>Date création :</b> ${g.createdAt ? new Date(g.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}<br>
             <b>ID :</b> ${g.id}</p>
+            <h3 style='color:#1de9b6;margin-top:18px;'>Membres</h3>
+            <div style='margin-bottom:18px;'>${membersHtml}</div>
+            <h3 style='color:#1de9b6;margin-top:18px;'>Événement associé</h3>
+            <div>${eventHtml}</div>
           </div>
         </div>
       `;

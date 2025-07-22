@@ -242,31 +242,22 @@
 
     let allEvents = [];
     async function loadEvents() {
-      const search = document.getElementById('searchInput').value.trim().toLowerCase();
       document.getElementById('eventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>';
       document.getElementById('pastEventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ccc;">Chargement...</td></tr>';
       let query = db.collection('events').orderBy('date', 'desc');
       const snapshot = await query.get();
       allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      let filtered = allEvents;
-      if (search) {
-        filtered = allEvents.filter(ev =>
-          (ev.name||'').toLowerCase().includes(search) ||
-          (ev.location||'').toLowerCase().includes(search) ||
-          (ev.etablissement||'').toLowerCase().includes(search)
-        );
-      }
-      if (filtered.length === 0) {
+      if (allEvents.length === 0) {
         document.getElementById('eventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ff5252;">Aucun événement trouvé</td></tr>';
         document.getElementById('pastEventsBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ff5252;">Aucun événement trouvé</td></tr>';
         return;
       }
-      const now = new Date('2025-07-15T00:00:00'); // Date du jour fixée
-      const upcomingEvents = filtered.filter(ev => {
+      const now = new Date('2025-07-21T00:00:00'); // Date du jour
+      const upcomingEvents = allEvents.filter(ev => {
         const eventDate = ev.date && ev.date.seconds ? new Date(ev.date.seconds*1000) : new Date(ev.date);
         return eventDate >= now;
       });
-      const pastEvents = filtered.filter(ev => {
+      const pastEvents = allEvents.filter(ev => {
         const eventDate = ev.date && ev.date.seconds ? new Date(ev.date.seconds*1000) : new Date(ev.date);
         return eventDate < now;
       });
