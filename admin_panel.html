@@ -464,6 +464,7 @@
       <button id="btnGroups" onclick="showSection('groups')">Groupes</button>
       <button id="btnFees" onclick="showSection('fees')">Frais</button>
       <button id="btnWithdrawals" onclick="showSection('withdrawals')">Retraits</button>
+      <button id="btnGroupRequests" onclick="showSection('groupRequests')">Demandes de groupes</button>
     </div>
     <div id="section-dashboard" class="section">
       <div id="dashboardStats"></div>
@@ -614,6 +615,12 @@
         </table>
       </div>
     </div>
+    <div id="section-groupRequests" class="section">
+      <h2>Demandes de rejoindre un groupe</h2>
+      <div id="groupRequestsCards" style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: flex-start; align-items: stretch;">
+        <!-- Les cartes seront injectées ici -->
+      </div>
+    </div>
     <section id="dashboardSection" style="display:none;">
       <h2>Dashboard</h2>
       <div class="dashboard-overview">
@@ -701,6 +708,9 @@
       }
       if (section === 'withdrawals') {
         loadWithdrawals();
+      }
+      if (section === 'groupRequests') {
+        loadGroupJoinRequests();
       }
     }
     function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -1239,26 +1249,63 @@
       let query = db.collection('groups').orderBy('createdAt', 'desc');
       const snapshot = await query.get();
       allGroups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      // Charger les demandes de join group pour tous les groupes
+      const joinReqSnap = await db.collection('groupJoinRequests').get();
+      const groupJoinRequestsByGroup = {};
+      joinReqSnap.forEach(doc => {
+        const d = doc.data();
+        if (!groupJoinRequestsByGroup[d.groupId]) groupJoinRequestsByGroup[d.groupId] = [];
+        groupJoinRequestsByGroup[d.groupId].push({ id: doc.id, ...d });
+      });
+
       if (allGroups.length === 0) {
         document.getElementById('groupsBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff5252;">Aucun groupe trouvé</td></tr>';
         return;
       }
       document.getElementById('groupsBody').innerHTML = allGroups.map(g => {
-        // Affichage membres (avatars + noms, max 4)
+        // Membres actuels
         let members = g.members ? Object.keys(g.members) : [];
-        let membersHtml = members.length
-          ? members.slice(0, 4).map(uid => {
-              const u = allUsersMap[uid] || {};
-              return `
-                <span title="${u.username||u.displayName||u.email||uid}" style="display:inline-block;margin-right:4px;">
-                  <img src="${u.photoURL||'https://via.placeholder.com/32x32/232526/1de9b6?text=U'}"
-                    style="width:32px;height:32px;border-radius:50%;vertical-align:middle;border:1px solid #1de9b6;margin-right:2px;">
-                  <span style="font-size:0.9em;color:#1de9b6;">${u.username ? u.username.split(' ')[0] : ''}</span>
-                </span>
-              `;
-            }).join('')
-          : '<span style="color:#aaa;">Aucun</span>';
-        if (members.length > 4) membersHtml += `<span style="color:#1de9b6;font-size:0.95em;"> +${members.length-4}</span>`;
+        let membersHtml = '';
+        if (members.length) {
+          membersHtml = members.map(uid => {
+            const u = allUsersMap[uid] || {};
+            return `
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+                <img src="${u.photoURL||'https://via.placeholder.com/28x28/232526/1de9b6?text=U'}" style="width:28px;height:28px;border-radius:50%;border:1px solid #1de9b6;">
+                <span style="color:#1de9b6;font-weight:bold;">${u.username||u.displayName||u.email||uid}</span>
+                <span style="background:#1de9b6;color:#232526;padding:1px 7px;border-radius:8px;font-size:0.85em;margin-left:4px;">Membre</span>
+              </div>
+            `;
+          }).join('');
+        } else {
+          membersHtml = '<span style="color:#aaa;">Aucun membre</span>';
+        }
+
+        // Demandes de rejoindre ce groupe
+        const joinRequests = groupJoinRequestsByGroup[g.id] || [];
+        let joinRequestsHtml = '';
+        if (joinRequests.length) {
+          joinRequestsHtml = joinRequests.map(req => {
+            const u = allUsersMap[req.userId] || {};
+            const statusColor = req.status === 'pending' ? '#ffc107' : req.status === 'accepted' ? '#4caf50' : '#ff5252';
+            const statusLabel = req.status === 'pending' ? 'En attente' : req.status === 'accepted' ? 'Accepté' : 'Refusé';
+            return `
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+                <img src="${u.photoURL||'https://via.placeholder.com/28x28/232526/1de9b6?text=U'}" style="width:28px;height:28px;border-radius:50%;border:1px solid #1de9b6;">
+                <span>${u.username||u.displayName||u.email||req.userId}</span>
+                <span style="background:${statusColor};color:#232526;padding:1px 7px;border-radius:8px;font-size:0.85em;margin-left:4px;">${statusLabel}</span>
+                ${req.status === 'pending' ? `
+                  <button class="action-btn details-btn" style="padding:2px 8px;font-size:0.9em;" onclick="updateGroupJoinRequestStatus('${req.id}','accepted')">Valider</button>
+                  <button class="action-btn" style="padding:2px 8px;font-size:0.9em;" onclick="updateGroupJoinRequestStatus('${req.id}','rejected')">Refuser</button>
+                ` : ''}
+              </div>
+            `;
+          }).join('');
+        } else {
+          joinRequestsHtml = '<span style="color:#aaa;">Aucune demande</span>';
+        }
+
         // Affichage événement associé
         let eventLabel = g.eventId && allEventsMap[g.eventId] ? (allEventsMap[g.eventId].name||'') : '-';
         return `
@@ -1273,7 +1320,16 @@
                 </span>
               ` : (g.creatorName||g.creatorId||'')}
             </td>
-            <td>${membersHtml}</td>
+            <td>
+              <div>
+                <span style="color:#1de9b6;font-size:0.95em;font-weight:bold;">Membres :</span>
+                <div>${membersHtml}</div>
+              </div>
+              <div style="margin-top:8px;border-top:1px solid #1de9b6;padding-top:6px;">
+                <span style="color:#1de9b6;font-size:0.95em;font-weight:bold;">Demandes :</span>
+                <div>${joinRequestsHtml}</div>
+              </div>
+            </td>
             <td>${eventLabel}</td>
             <td>${g.createdAt ? new Date(g.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}</td>
             <td>
@@ -1391,8 +1447,67 @@
       loadWithdrawals();
     }
 
+    // GROUP JOIN REQUESTS
+    async function loadGroupJoinRequests() {
+      const container = document.getElementById('groupRequestsCards');
+      container.innerHTML = '<div style="color:#1de9b6;text-align:center;width:100%;">Chargement...</div>';
+      // Charger toutes les demandes
+      const snap = await db.collection('groupJoinRequests').orderBy('createdAt', 'desc').get();
+      if (snap.empty) {
+        container.innerHTML = '<div style="color:#ff5252;text-align:center;width:100%;">Aucune demande</div>';
+        return;
+      }
+      // Préparer les maps pour users, groupes, events
+      const usersSnap = await db.collection('users').get();
+      const usersMap = {};
+      usersSnap.forEach(doc => usersMap[doc.id] = { id: doc.id, ...doc.data() });
+      const groupsSnap = await db.collection('groups').get();
+      const groupsMap = {};
+      groupsSnap.forEach(doc => groupsMap[doc.id] = { id: doc.id, ...doc.data() });
+      const eventsSnap = await db.collection('events').get();
+      const eventsMap = {};
+      eventsSnap.forEach(doc => eventsMap[doc.id] = { id: doc.id, ...doc.data() });
+
+      container.innerHTML = '';
+      snap.forEach(doc => {
+        const d = doc.data();
+        const user = usersMap[d.userId] || {};
+        const group = groupsMap[d.groupId] || {};
+        const event = eventsMap[d.eventId] || {};
+        const statusColor = d.status === 'pending' ? '#ffc107' : d.status === 'accepted' ? '#4caf50' : '#ff5252';
+        container.innerHTML += `
+          <div style="background:#232526;border:1px solid #1de9b6;border-radius:14px;padding:18px;min-width:280px;flex:1 1 320px;max-width:400px;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <img src="${user.photoURL||'https://via.placeholder.com/40x40/232526/1de9b6?text=U'}" style="width:40px;height:40px;border-radius:50%;border:1px solid #1de9b6;">
+              <div>
+                <div style="font-weight:bold;color:#1de9b6;">${user.username||user.displayName||user.email||d.userId}</div>
+                <div style="font-size:0.95em;color:#ccc;">${d.sexe||user.sexe||''}</div>
+              </div>
+            </div>
+            <div><b>Groupe :</b> ${group.name||d.groupId}</div>
+            <div><b>Événement :</b> ${event.name||d.eventId}</div>
+            <div><b>Date :</b> ${d.createdAt ? (d.createdAt.seconds ? new Date(d.createdAt.seconds*1000).toLocaleString('fr-FR') : d.createdAt) : ''}</div>
+            <div>
+              <span style="background:${statusColor};color:#232526;padding:3px 10px;border-radius:10px;font-weight:bold;">${d.status||'-'}</span>
+            </div>
+            <div>
+              ${d.status === 'pending' ? `
+                <button class="action-btn details-btn" onclick="updateGroupJoinRequestStatus('${doc.id}','accepted')">Valider</button>
+                <button class="action-btn" onclick="updateGroupJoinRequestStatus('${doc.id}','rejected')">Refuser</button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    async function updateGroupJoinRequestStatus(id, status) {
+      await db.collection('groupJoinRequests').doc(id).update({ status });
+      loadGroups();
+    }
+
     // Chargement initial
-    window.onload = () => { loadEvents(); loadUsers(); loadGroups(); loadWithdrawals(); };
+    window.onload = () => { loadEvents(); loadUsers(); loadGroups(); loadWithdrawals(); loadGroupJoinRequests(); };
 
     function closeModal(e) {
       if (e) e.stopPropagation();
