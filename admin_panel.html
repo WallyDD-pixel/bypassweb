@@ -429,6 +429,26 @@
         grid-template-columns: 1fr;
       }
     }
+    /* Ajout pour le modal d'image utilisateur */
+    .image-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      cursor: zoom-out;
+    }
+    .image-modal img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
+      background: #232526;
+      display: block;
+      margin: 0 auto;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -1041,7 +1061,7 @@
         }
       } catch(e) {}
       // Fusionner les deux listes
-      let allUsers = firestoreUsers.map(u => ({...u, source: 'firestore'}));
+      allUsers = firestoreUsers.map(u => ({...u, source: 'firestore'}));
       // Ajouter les utilisateurs Auth qui ne sont pas dans Firestore
       authUsers.forEach(au => {
         if (!firestoreUsers.find(u => u.id === au.uid)) {
@@ -1211,10 +1231,10 @@
       // Charger tous les users et events pour mapping rapide
       const usersSnap = await db.collection('users').get();
       allUsersMap = {};
-      usersSnap.forEach(doc => allUsersMap[doc.id] = doc.data());
+      usersSnap.forEach(doc => allUsersMap[doc.id] = { id: doc.id, ...doc.data() });
       const eventsSnap = await db.collection('events').get();
       allEventsMap = {};
-      eventsSnap.forEach(doc => allEventsMap[doc.id] = doc.data());
+      eventsSnap.forEach(doc => allEventsMap[doc.id] = { id: doc.id, ...doc.data() });
       // Charger les groupes
       let query = db.collection('groups').orderBy('createdAt', 'desc');
       const snapshot = await query.get();
@@ -1226,19 +1246,34 @@
       document.getElementById('groupsBody').innerHTML = allGroups.map(g => {
         // Affichage membres (avatars + noms, max 4)
         let members = g.members ? Object.keys(g.members) : [];
-        let membersHtml = members.slice(0,4).map(uid => {
-          const u = allUsersMap[uid]||{};
-          return `<span title="${u.username||u.displayName||u.email||uid}" style='display:inline-block;margin-right:2px;'><img src="${u.photoURL||'https://via.placeholder.com/32x32/232526/1de9b6?text=U'}" style='width:32px;height:32px;border-radius:50%;vertical-align:middle;border:1px solid #1de9b6;margin-right:2px;'>${u.username?'<span style=\'font-size:0.9em;color:#1de9b6;\'>'+(u.username.split(' ')[0])+'</span>':''}</span>`;
-        }).join('');
-        if (members.length > 4) membersHtml += ` <span style='color:#1de9b6;font-size:0.95em;'>+${members.length-4}</span>`;
+        let membersHtml = members.length
+          ? members.slice(0, 4).map(uid => {
+              const u = allUsersMap[uid] || {};
+              return `
+                <span title="${u.username||u.displayName||u.email||uid}" style="display:inline-block;margin-right:4px;">
+                  <img src="${u.photoURL||'https://via.placeholder.com/32x32/232526/1de9b6?text=U'}"
+                    style="width:32px;height:32px;border-radius:50%;vertical-align:middle;border:1px solid #1de9b6;margin-right:2px;">
+                  <span style="font-size:0.9em;color:#1de9b6;">${u.username ? u.username.split(' ')[0] : ''}</span>
+                </span>
+              `;
+            }).join('')
+          : '<span style="color:#aaa;">Aucun</span>';
+        if (members.length > 4) membersHtml += `<span style="color:#1de9b6;font-size:0.95em;"> +${members.length-4}</span>`;
         // Affichage événement associé
         let eventLabel = g.eventId && allEventsMap[g.eventId] ? (allEventsMap[g.eventId].name||'') : '-';
         return `
           <tr>
             <td>${g.name||''}</td>
             <td>${g.city||g.ville||''}</td>
-            <td>${g.creatorName||g.creatorId||''}</td>
-            <td>${membersHtml||'Aucun'}</td>
+            <td>
+              ${g.creatorId && allUsersMap[g.creatorId] ? `
+                <span style="display:flex;align-items:center;">
+                  <img src="${allUsersMap[g.creatorId].photoURL||'https://via.placeholder.com/24x24/232526/1de9b6?text=U'}" style="width:24px;height:24px;border-radius:50%;border:1px solid #1de9b6;margin-right:6px;">
+                  ${allUsersMap[g.creatorId].username||allUsersMap[g.creatorId].displayName||allUsersMap[g.creatorId].email||g.creatorId}
+                </span>
+              ` : (g.creatorName||g.creatorId||'')}
+            </td>
+            <td>${membersHtml}</td>
             <td>${eventLabel}</td>
             <td>${g.createdAt ? new Date(g.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}</td>
             <td>
@@ -1254,10 +1289,18 @@
       if (!g) return;
       // Liste complète des membres
       let members = g.members ? Object.keys(g.members) : [];
-      let membersHtml = members.length ? members.map(uid => {
-        const u = allUsersMap[uid]||{};
-        return `<div style='display:flex;align-items:center;margin-bottom:6px;'><img src="${u.photoURL||'https://via.placeholder.com/32x32/232526/1de9b6?text=U'}" style='width:32px;height:32px;border-radius:50%;margin-right:8px;border:1px solid #1de9b6;'><span>${u.username||u.displayName||u.email||uid}</span></div>`;
-      }).join('') : '<i style="color:#aaa">Aucun membre</i>';
+      let membersHtml = members.length
+        ? members.map(uid => {
+            const u = allUsersMap[uid] || {};
+            return `
+              <div style="display:flex;align-items:center;margin-bottom:6px;">
+                <img src="${u.photoURL||'https://via.placeholder.com/32x32/232526/1de9b6?text=U'}"
+                  style="width:32px;height:32px;border-radius:50%;margin-right:8px;border:1px solid #1de9b6;">
+                <span>${u.username||u.displayName||u.email||uid}</span>
+              </div>
+            `;
+          }).join('')
+        : '<i style="color:#aaa">Aucun membre</i>';
       // Événement associé
       let eventHtml = '-';
       if (g.eventId && allEventsMap[g.eventId]) {
@@ -1270,7 +1313,12 @@
             <button class="close-modal" onclick="closeModal(event)">&times;</button>
             <h2>${g.name||''}</h2>
             <p><b>Ville :</b> ${g.city||g.ville||''}<br>
-            <b>Créateur :</b> ${g.creatorName||g.creatorId||''}<br>
+            <b>Créateur :</b> ${g.creatorId && allUsersMap[g.creatorId] ? `
+              <span style="display:flex;align-items:center;">
+                <img src="${allUsersMap[g.creatorId].photoURL||'https://via.placeholder.com/24x24/232526/1de9b6?text=U'}" style="width:24px;height:24px;border-radius:50%;border:1px solid #1de9b6;margin-right:6px;">
+                ${allUsersMap[g.creatorId].username||allUsersMap[g.creatorId].displayName||allUsersMap[g.creatorId].email||g.creatorId}
+              </span>
+            ` : (g.creatorName||g.creatorId||'')}<br>
             <b>Date création :</b> ${g.createdAt ? new Date(g.createdAt.seconds*1000).toLocaleString('fr-FR') : ''}<br>
             <b>ID :</b> ${g.id}</p>
             <h3 style='color:#1de9b6;margin-top:18px;'>Membres</h3>
