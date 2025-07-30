@@ -535,6 +535,15 @@
     </div>
     <div id="section-users" class="section">
       <button class="action-btn" style="background:#1de9b6;color:#232526;margin-bottom:18px;" onclick="openUserForm()">Créer un utilisateur</button>
+      <div style="display:flex;align-items:center;gap:18px;margin-bottom:18px;">
+        <label style="color:#1de9b6;font-weight:bold;">Filtrer :</label>
+        <select id="userGenderFilter" onchange="applyUserGenderFilter()" style="padding:6px 12px;border-radius:8px;border:1px solid #1de9b6;">
+          <option value="all">Tous</option>
+          <option value="F">femme</option>
+          <option value="M">homme</option>
+        </select>
+        <span id="userGenderStats" style="color:#ccc;font-size:1em;font-weight:bold;"></span>
+      </div>
       <div class="bulk-actions" id="bulkActions">
         <span id="selectedCount">0 utilisateur(s) sélectionné(s)</span>
         <button class="action-btn" onclick="deleteSelectedUsers()">Supprimer sélectionnés</button>
@@ -1061,6 +1070,56 @@
     // USERS
     let allUsers = [];
     let selectedUsers = new Set();
+    let currentUserGenderFilter = "all";
+
+    function applyUserGenderFilter() {
+      currentUserGenderFilter = document.getElementById('userGenderFilter').value;
+      renderUsersTable();
+    }
+
+    function renderUsersTable() {
+      let filteredUsers = allUsers;
+      if (currentUserGenderFilter === "F") {
+        filteredUsers = allUsers.filter(u => (u.sexe||"").toLowerCase() === "femme");
+      } else if (currentUserGenderFilter === "M") {
+        filteredUsers = allUsers.filter(u => (u.sexe||"").toLowerCase() === "homme");
+      }
+      if (filteredUsers.length === 0) {
+        document.getElementById('usersBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff5252;">Aucun utilisateur trouvé</td></tr>';
+      } else {
+        document.getElementById('usersBody').innerHTML = filteredUsers.map(u => `
+          <tr style="${u.source==='auth' ? 'background:#607d8b;color:#fff;' : ''}">
+            <td class="checkbox-cell"><input type="checkbox" class="user-checkbox" value="${u.id}" onchange="updateSelection()"></td>
+            <td><img class="user-img" src="${u.photoURL||DEFAULT_USER_IMG}" alt="img" onclick="showImageModal('${u.photoURL||DEFAULT_USER_IMG_LARGE}')"></td>
+            <td>${u.username||''} ${u.source==='auth' ? '<span style=\'font-size:0.9em;background:#ff5252;color:#fff;padding:2px 8px;border-radius:8px;margin-left:8px;\'>AUTH SEUL</span>' : ''}</td>
+            <td>${u.email||''}</td>
+            <td>${u.sexe||''}</td>
+            <td>${u.createdAt ? (u.createdAt.seconds ? new Date(u.createdAt.seconds*1000).toLocaleString('fr-FR') : u.createdAt) : ''}</td>
+            <td>
+              <button class="action-btn details-btn" onclick="showUserDetails('${u.id}')">Détails</button>
+              ${u.source==='auth' ? `<button class="action-btn" style="background:#ff5252;" onclick="deleteAuthUser('${u.id}')">Supprimer Auth</button>` : `<button class="action-btn" style="background:#ffc107;color:#232526;" onclick="openUserForm('${u.id}')">✏️</button><button class="action-btn" onclick="deleteUser('${u.id}')">Supprimer</button>`}
+            </td>
+          </tr>
+        `).join('');
+      }
+      // Calcul du pourcentage filles/garçons
+      const total = allUsers.filter(u => {
+        const s = (u.sexe||"").toLowerCase();
+        return s === "femme" || s === "homme";
+      }).length;
+      const filles = allUsers.filter(u => (u.sexe||"").toLowerCase() === "femme").length;
+      const hommes = allUsers.filter(u => (u.sexe||"").toLowerCase() === "homme").length;
+      let statsText = "";
+      if (total > 0) {
+        const pf = Math.round((filles/total)*100);
+        const ph = Math.round((hommes/total)*100);
+        statsText = `Femme : ${filles} (${pf}%) & Homme : ${hommes} (${ph}%)`;
+      } else {
+        statsText = "Genre non renseigné";
+      }
+      document.getElementById('userGenderStats').textContent = statsText;
+      clearSelection();
+    }
 
     async function loadUsers() {
       document.getElementById('usersBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#1de9b6;">Chargement...</td></tr>';
@@ -1097,25 +1156,7 @@
           });
         }
       });
-      if (allUsers.length === 0) {
-        document.getElementById('usersBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff5252;">Aucun utilisateur trouvé</td></tr>';
-        return;
-      }
-      document.getElementById('usersBody').innerHTML = allUsers.map(u => `
-        <tr style="${u.source==='auth' ? 'background:#607d8b;color:#fff;' : ''}">
-          <td class="checkbox-cell"><input type="checkbox" class="user-checkbox" value="${u.id}" onchange="updateSelection()"></td>
-          <td><img class="user-img" src="${u.photoURL||DEFAULT_USER_IMG}" alt="img" onclick="showImageModal('${u.photoURL||DEFAULT_USER_IMG_LARGE}')"></td>
-          <td>${u.username||''} ${u.source==='auth' ? '<span style=\'font-size:0.9em;background:#ff5252;color:#fff;padding:2px 8px;border-radius:8px;margin-left:8px;\'>AUTH SEUL</span>' : ''}</td>
-          <td>${u.email||''}</td>
-          <td>${u.sexe||''}</td>
-          <td>${u.createdAt ? (u.createdAt.seconds ? new Date(u.createdAt.seconds*1000).toLocaleString('fr-FR') : u.createdAt) : ''}</td>
-          <td>
-            <button class="action-btn details-btn" onclick="showUserDetails('${u.id}')">Détails</button>
-            ${u.source==='auth' ? `<button class="action-btn" style="background:#ff5252;" onclick="deleteAuthUser('${u.id}')">Supprimer Auth</button>` : `<button class="action-btn" style="background:#ffc107;color:#232526;" onclick="openUserForm('${u.id}')">✏️</button><button class="action-btn" onclick="deleteUser('${u.id}')">Supprimer</button>`}
-          </td>
-        </tr>
-      `).join('');
-      clearSelection();
+      renderUsersTable();
     }
     // Fonction pour supprimer un utilisateur Auth uniquement (nécessite une API serveur)
     async function deleteAuthUser(uid) {
@@ -1275,7 +1316,7 @@
         return;
       }
       document.getElementById('groupsBody').innerHTML = allGroups.map(g => {
-        // Correction : vérifier que creatorId existe et est bien une chaîne non vide
+        // Correction : afficher seulement l'id si le créateur est inconnu
         let creatorId = g.creatorId && typeof g.creatorId === 'string' && g.creatorId.length > 0 ? g.creatorId : '';
         let creator = creatorId && allUsersMap[creatorId] ? allUsersMap[creatorId] : null;
         let creatorHtml = '';
@@ -1286,8 +1327,8 @@
                 <span style="background:#1de9b6;color:#232526;padding:1px 7px;border-radius:8px;font-size:0.85em;margin-left:4px;">Créateur</span>
              </div>`;
         } else if (creatorId) {
-          // Si l'utilisateur n'existe pas dans users mais l'id est présent, afficher l'id
-          creatorHtml = `<span style="color:#ff5252;font-weight:bold;">${creatorId}</span> <span style="background:#ff5252;color:#fff;padding:1px 7px;border-radius:8px;font-size:0.85em;margin-left:4px;">Créateur inconnu</span>`;
+          // Affiche uniquement l'id du créateur, sans le texte "Créateur inconnu"
+          creatorHtml = `<span style="color:#ff5252;font-weight:bold;">${creatorId}</span>`;
         } else {
           creatorHtml = `<span style="color:#aaa;">Créateur inconnu</span>`;
         }
@@ -1425,7 +1466,7 @@
           <tr>
             <td>${d.amount ? Number(d.amount).toLocaleString('fr-FR', {minimumFractionDigits:2}) : '-'}</td>
             <td><span class="status-badge ${statusClass}">${d.status||'-'}</span></td>
-            <td>${d.stripeAccountId||'-'}</td>
+                       <td>${d.stripeAccountId||'-'}</td>
             <td>${d.timestamp ? new Date(d.timestamp.seconds*1000).toLocaleString('fr-FR') : '-'}</td>
             <td>${d.userId||'-'}</td>
             <td>

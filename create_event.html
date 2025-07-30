@@ -193,6 +193,15 @@
         <input type="file" id="image" accept="image/*" />
         <img id="preview" class="preview-img" src="https://via.placeholder.com/400x180/232526/1de9b6?text=Prévisualisation" style="display:block;" />
       </div>
+      <div class="form-group">
+        <label for="modalite">Modalité</label>
+        <select id="modalite">
+          <option value="">-- Sélectionner --</option>
+          <option value="gratuit_filles_soiree">Gratuit pour les filles toute la soirée</option>
+          <option value="gratuit_filles_avant_00h">Gratuit pour les filles avant 00h</option>
+          <option value="gratuit_filles_avant_2h">Gratuit pour les filles avant 2h</option>
+        </select>
+      </div>
       <div id="formError" class="error"></div>
       <div id="formSuccess" class="success"></div>
       <button type="submit" class="btn" id="submitBtn">
@@ -261,6 +270,7 @@
       const endTime = document.getElementById('endTime').value;
       const description = document.getElementById('description').value.trim();
       const imageFile = imageInput.files[0];
+      const modalite = document.getElementById('modalite').value;
       if (!name || !location || !date || !startTime || !endTime) {
         document.getElementById('formError').textContent = 'Veuillez remplir tous les champs obligatoires.';
         submitBtn.disabled = false;
@@ -311,6 +321,7 @@
           location,
           etablissement,
           description,
+          modalite, // Ajout du champ modalité
           date: firebase.firestore.Timestamp.fromDate(new Date(date)),
           startTime,
           endTime,
