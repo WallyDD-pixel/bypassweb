@@ -693,12 +693,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Remplacer toutes les URLs de placeholder par placehold.co
-    const DEFAULT_USER_IMG = "https://placehold.co/50x50/232526/1de9b6?text=User";
-    const DEFAULT_USER_IMG_LARGE = "https://placehold.co/400x400/232526/1de9b6?text=User";
-    const DEFAULT_GROUP_USER_IMG = "https://placehold.co/28x28/232526/1de9b6?text=U";
-    const DEFAULT_GROUP_USER_IMG_LARGE = "https://placehold.co/40x40/232526/1de9b6?text=U";
-
     // Menu navigation
     function showSection(section) {
       document.getElementById('dashboardSection').style.display = section === 'dashboard' ? 'block' : 'none';
@@ -1071,16 +1065,11 @@
       // Récupérer les utilisateurs Auth (nécessite une Cloud Function ou API admin)
       let authUsers = [];
       try {
-        const res = await fetch('/list-auth-users');
+        const res = await fetch('/list-auth-users'); // Doit pointer vers une API qui retourne la liste des utilisateurs Auth
         if (res.ok) {
-          authUsers = await res.json();
-        } else {
-          // Affiche un message d'erreur si l'API n'est pas disponible
-          console.warn("API /list-auth-users non disponible, seuls les utilisateurs Firestore seront affichés.");
+          authUsers = await res.json(); // [{uid, email, displayName, ...}]
         }
-      } catch(e) {
-        console.warn("Erreur lors de la récupération des utilisateurs Auth:", e);
-      }
+      } catch(e) {}
       // Fusionner les deux listes
       allUsers = firestoreUsers.map(u => ({...u, source: 'firestore'}));
       // Ajouter les utilisateurs Auth qui ne sont pas dans Firestore
@@ -1104,7 +1093,7 @@
       document.getElementById('usersBody').innerHTML = allUsers.map(u => `
         <tr style="${u.source==='auth' ? 'background:#607d8b;color:#fff;' : ''}">
           <td class="checkbox-cell"><input type="checkbox" class="user-checkbox" value="${u.id}" onchange="updateSelection()"></td>
-          <td><img class="user-img" src="${u.photoURL||DEFAULT_USER_IMG}" alt="img" onclick="showImageModal('${u.photoURL||DEFAULT_USER_IMG_LARGE}')"></td>
+          <td><img class="user-img" src="${u.photoURL||'https://via.placeholder.com/50x50/232526/1de9b6?text=User'}" alt="img" onclick="showImageModal('${u.photoURL||'https://via.placeholder.com/400x400/232526/1de9b6?text=User'}')"></td>
           <td>${u.username||''} ${u.source==='auth' ? '<span style=\'font-size:0.9em;background:#ff5252;color:#fff;padding:2px 8px;border-radius:8px;margin-left:8px;\'>AUTH SEUL</span>' : ''}</td>
           <td>${u.email||''}</td>
           <td>${u.sexe||''}</td>
@@ -1178,7 +1167,7 @@
       
       document.getElementById('modal').innerHTML = `
         <div class="image-modal" onclick="closeModal(event)">
-          <img src="${imageUrl||DEFAULT_USER_IMG_LARGE}" alt="Photo utilisateur" onclick="event.stopPropagation()">
+          <img src="${imageUrl}" alt="Photo utilisateur" onclick="event.stopPropagation()">
         </div>
       `;
       document.getElementById('modal').style.display = 'block';
@@ -1253,7 +1242,7 @@
       const usersSnap = await db.collection('users').get();
       allUsersMap = {};
       usersSnap.forEach(doc => allUsersMap[doc.id] = { id: doc.id, ...doc.data() });
-      const eventsSnap = await db.collection('events').get();
+      const eventsSnap = await db.collection('events').get();us
       allEventsMap = {};
       eventsSnap.forEach(doc => allEventsMap[doc.id] = { id: doc.id, ...doc.data() });
       // Charger les groupes
@@ -1275,41 +1264,46 @@
         return;
       }
       document.getElementById('groupsBody').innerHTML = allGroups.map(g => {
-        // Correction : vérifier que creatorId existe et est bien une chaîne non vide
-        let creatorId = g.creatorId && typeof g.creatorId === 'string' && g.creatorId.length > 0 ? g.creatorId : '';
-        let creator = creatorId && allUsersMap[creatorId] ? allUsersMap[creatorId] : null;
-        let creatorHtml = '';
-        if (creator) {
-          creatorHtml = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-                <img src="${creator.photoURL||DEFAULT_GROUP_USER_IMG}" style="width:28px;height:28px;border-radius:50%;border:1px solid #1de9b6;">
-                <span style="color:#1de9b6;font-weight:bold;">${creator.username||creator.displayName||creator.email||creatorId}</span>
-                <span style="background:#1de9b6;color:#232526;padding:1px 7px;border-radius:8px;font-size:0.85em;margin-left:4px;">Créateur</span>
-             </div>`;
-        } else if (creatorId) {
-          // Si l'utilisateur n'existe pas dans users mais l'id est présent, afficher l'id
-          creatorHtml = `<span style="color:#ff5252;font-weight:bold;">${creatorId}</span> <span style="background:#ff5252;color:#fff;padding:1px 7px;border-radius:8px;font-size:0.85em;margin-left:4px;">Créateur inconnu</span>`;
-        } else {
-          creatorHtml = `<span style="color:#aaa;">Créateur inconnu</span>`;
-        }
-
-        // Demandes en attente uniquement
-        const joinRequests = (groupJoinRequestsByGroup[g.id] || []).filter(req => req.status === 'pending');
-        let joinRequestsHtml = '';
-        if (joinRequests.length) {
-          joinRequestsHtml = joinRequests.map(req => {
-            const u = allUsersMap[req.userId] || {};
+        // Membres actuels
+        let members = g.members ? Object.keys(g.members) : [];
+        let membersHtml = '';
+        if (members.length) {
+          membersHtml = members.map(uid => {
+            const u = allUsersMap[uid] || {};
             return `
               <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-                <img src="${u.photoURL||DEFAULT_GROUP_USER_IMG}" style="width:28px;height:28px;border-radius:50%;border:1px solid #1de9b6;">
-                <span>${u.username||u.displayName||u.email||req.userId}</span>
-                <span style="background:#ffc107;color:#232526;padding:1px 7px;border-radius:8px;font-size:0.85em;margin-left:4px;">En attente</span>
-                <button class="action-btn details-btn" style="padding:2px 8px;font-size:0.9em;" onclick="updateGroupJoinRequestStatus('${req.id}','accepted')">Valider</button>
-                <button class="action-btn" style="padding:2px 8px;font-size:0.9em;" onclick="updateGroupJoinRequestStatus('${req.id}','rejected')">Refuser</button>
+                <img src="${u.photoURL||'https://via.placeholder.com/28x28/232526/1de9b6?text=U'}" style="width:28px;height:28px;border-radius:50%;border:1px solid #1de9b6;">
+                <span style="color:#1de9b6;font-weight:bold;">${u.username||u.displayName||u.email||uid}</span>
+                <span style="background:#1de9b6;color:#232526;padding:1px 7px;border-radius:8px;font-size:0.85em;margin-left:4px;">Membre</span>
               </div>
             `;
           }).join('');
         } else {
-          joinRequestsHtml = '<span style="color:#aaa;">Aucune demande en attente</span>';
+          membersHtml = '<span style="color:#aaa;">Aucun membre</span>';
+        }
+
+        // Demandes de rejoindre ce groupe
+        const joinRequests = groupJoinRequestsByGroup[g.id] || [];
+        let joinRequestsHtml = '';
+        if (joinRequests.length) {
+          joinRequestsHtml = joinRequests.map(req => {
+            const u = allUsersMap[req.userId] || {};
+            const statusColor = req.status === 'pending' ? '#ffc107' : req.status === 'accepted' ? '#4caf50' : '#ff5252';
+            const statusLabel = req.status === 'pending' ? 'En attente' : req.status === 'accepted' ? 'Accepté' : 'Refusé';
+            return `
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+                <img src="${u.photoURL||'https://via.placeholder.com/28x28/232526/1de9b6?text=U'}" style="width:28px;height:28px;border-radius:50%;border:1px solid #1de9b6;">
+                <span>${u.username||u.displayName||u.email||req.userId}</span>
+                <span style="background:${statusColor};color:#232526;padding:1px 7px;border-radius:8px;font-size:0.85em;margin-left:4px;">${statusLabel}</span>
+                ${req.status === 'pending' ? `
+                  <button class="action-btn details-btn" style="padding:2px 8px;font-size:0.9em;" onclick="updateGroupJoinRequestStatus('${req.id}','accepted')">Valider</button>
+                  <button class="action-btn" style="padding:2px 8px;font-size:0.9em;" onclick="updateGroupJoinRequestStatus('${req.id}','rejected')">Refuser</button>
+                ` : ''}
+              </div>
+            `;
+          }).join('');
+        } else {
+          joinRequestsHtml = '<span style="color:#aaa;">Aucune demande</span>';
         }
 
         // Affichage événement associé
@@ -1319,11 +1313,20 @@
             <td>${g.name||''}</td>
             <td>${g.city||g.ville||''}</td>
             <td>
-              ${creatorHtml}
+              ${g.creatorId && allUsersMap[g.creatorId] ? `
+                <span style="display:flex;align-items:center;">
+                  <img src="${allUsersMap[g.creatorId].photoURL||'https://via.placeholder.com/24x24/232526/1de9b6?text=U'}" style="width:24px;height:24px;border-radius:50%;border:1px solid #1de9b6;margin-right:6px;">
+                  ${allUsersMap[g.creatorId].username||allUsersMap[g.creatorId].displayName||allUsersMap[g.creatorId].email||g.creatorId}
+                </span>
+              ` : (g.creatorName||g.creatorId||'')}
             </td>
             <td>
               <div>
-                <span style="color:#1de9b6;font-size:0.95em;font-weight:bold;">Demandes en attente :</span>
+                <span style="color:#1de9b6;font-size:0.95em;font-weight:bold;">Membres :</span>
+                <div>${membersHtml}</div>
+              </div>
+              <div style="margin-top:8px;border-top:1px solid #1de9b6;padding-top:6px;">
+                <span style="color:#1de9b6;font-size:0.95em;font-weight:bold;">Demandes :</span>
                 <div>${joinRequestsHtml}</div>
               </div>
             </td>
@@ -1347,7 +1350,8 @@
             const u = allUsersMap[uid] || {};
             return `
               <div style="display:flex;align-items:center;margin-bottom:6px;">
-                <img src="${u.photoURL||DEFAULT_GROUP_USER_IMG}" style="width:32px;height:32px;border-radius:50%;margin-right:8px;border:1px solid #1de9b6;">
+                <img src="${u.photoURL||'https://via.placeholder.com/32x32/232526/1de9b6?text=U'}"
+                  style="width:32px;height:32px;border-radius:50%;margin-right:8px;border:1px solid #1de9b6;">
                 <span>${u.username||u.displayName||u.email||uid}</span>
               </div>
             `;
@@ -1472,9 +1476,9 @@
         const event = eventsMap[d.eventId] || {};
         const statusColor = d.status === 'pending' ? '#ffc107' : d.status === 'accepted' ? '#4caf50' : '#ff5252';
         container.innerHTML += `
-          <div style="background:#232526;border:1px solid #1de9b6;border-radius:14px;padding:18px;min-width:280px;flex:1 320px;max-width:400px;display:flex;flex-direction:column;gap:10px;">
+          <div style="background:#232526;border:1px solid #1de9b6;border-radius:14px;padding:18px;min-width:280px;flex:1 1 320px;max-width:400px;display:flex;flex-direction:column;gap:10px;">
             <div style="display:flex;align-items:center;gap:10px;">
-              <img src="${user.photoURL||DEFAULT_GROUP_USER_IMG_LARGE}" style="width:40px;height:40px;border-radius:50%;border:1px solid #1de9b6;">
+              <img src="${user.photoURL||'https://via.placeholder.com/40x40/232526/1de9b6?text=U'}" style="width:40px;height:40px;border-radius:50%;border:1px solid #1de9b6;">
               <div>
                 <div style="font-weight:bold;color:#1de9b6;">${user.username||user.displayName||user.email||d.userId}</div>
                 <div style="font-size:0.95em;color:#ccc;">${d.sexe||user.sexe||''}</div>
